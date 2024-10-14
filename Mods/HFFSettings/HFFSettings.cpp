@@ -122,7 +122,7 @@ void OnLoaded() {
     InvokeHook(Ball_OnEnable, new_Ball_OnEnable, old_Ball_OnEnable);
     HOOK(HumanControls_ReadInput, new_ReadInput, old_ReadInput);
     if(joystickFix) HOOK(HumanControls_get_calc_joyWalk, new_HumanControls_get_calc_joyWalk, old_HumanControls_get_calc_joyWalk);
-    HOOK(Options_Load, new_Options_Load, new_Options_Load);
+    HOOK(Options_Load, new_Options_Load, old_Options_Load);
 }
 
 bool stob(const std::string &str) {
