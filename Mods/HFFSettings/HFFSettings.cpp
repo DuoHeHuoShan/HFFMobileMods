@@ -26,6 +26,11 @@ BNM::Class GamePlayerPrefs;
 BNM::MethodBase GamePlayerPrefs_GetInt, GamePlayerPrefs_SetInt, GamePlayerPrefs_GetFloat, GamePlayerPrefs_SetFloat, GamePlayerPrefs_GetString, GamePlayerPrefs_SetString;
 BNM::Class UnityPlayerPrefs;
 BNM::MethodBase UnityPlayerPrefs_GetInt, UnityPlayerPrefs_SetInt, UnityPlayerPrefs_GetFloat, UnityPlayerPrefs_SetFloat, UnityPlayerPrefs_GetString, UnityPlayerPrefs_SetString;
+BNM::Class Options;
+BNM::MethodBase Options_Load;
+BNM::Method<void> Options_set_advancedVideoClouds;
+BNM::Method<void> Options_set_cameraSmoothing;
+BNM::Method<void> Options_set_cameraFov;
 
 float lookHScale = 12;
 float lookVScale = 5;
@@ -33,6 +38,9 @@ bool visibleBall = false;
 bool localSave = false;
 bool disableShadows = false;
 bool joystickFix = false;
+int cameraFov = 5;
+int cameraSmoothing = 10;
+int advancedVideoClouds = 2;
 
 void (*old_ReadInput)(BNM::UnityEngine::Object *, void *);
 void new_ReadInput(BNM::UnityEngine::Object *thiz, void *outInputState) {
@@ -54,6 +62,14 @@ BNM::Structures::Unity::Vector3 new_HumanControls_get_calc_joyWalk(BNM::UnityEng
     ret.x = round(ret.x);
     ret.z = round(ret.z);
     return ret;
+}
+
+void (*old_Options_Load)();
+void new_Options_Load() {
+    Options_set_cameraFov(cameraFov);
+    Options_set_cameraSmoothing(cameraSmoothing);
+    Options_set_advancedVideoClouds(advancedVideoClouds);
+    old_Options_Load();
 }
 
 
@@ -91,15 +107,22 @@ void OnLoaded() {
     HumanControls_lookHScale = HumanControls.GetField("lookHScale");
     HumanControls_lookVScale = HumanControls.GetField("lookVScale");
     HumanControls_get_calc_joyWalk = HumanControls.GetMethod("get_calc_joyWalk");
-    Ball = BNM::Class("", "Ball");
+    Ball = Class("", "Ball");
     Ball_OnEnable = Ball.GetMethod("OnEnable");
-    GameObject = BNM::Class("UnityEngine", "GameObject");
+    GameObject = Class("UnityEngine", "GameObject");
     GameObject_Find = GameObject.GetMethod("Find");
     GameObject_SetActive = GameObject.GetMethod("SetActive");
+    Options = Class("", "Options");
+    Options_Load = Options.GetMethod("Load");
+    Options_set_advancedVideoClouds = Options.GetMethod("set_advancedVideoClouds");
+    Options_set_cameraFov = Options.GetMethod("set_cameraFov");
+    Options_set_cameraSmoothing = Options.GetMethod("set_cameraSmoothing");
+
     if(localSave) ApplyLocalSave();
     InvokeHook(Ball_OnEnable, new_Ball_OnEnable, old_Ball_OnEnable);
     HOOK(HumanControls_ReadInput, new_ReadInput, old_ReadInput);
     if(joystickFix) HOOK(HumanControls_get_calc_joyWalk, new_HumanControls_get_calc_joyWalk, old_HumanControls_get_calc_joyWalk);
+    HOOK(Options_Load, new_Options_Load, new_Options_Load);
 }
 
 bool stob(const std::string &str) {
@@ -123,6 +146,9 @@ void UseDefaultSettings() {
     HFFSettings["localSave"] = "false";
     HFFSettings["disableShadows"] = "false";
     HFFSettings["joystickFix"] = "false";
+    HFFSettings["cameraFov"] = "5";
+    HFFSettings["cameraSmoothing"] = "10";
+    HFFSettings["advancedVideoClouds"] = "2";
 }
 
 void ReadSettings() {
@@ -164,6 +190,9 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
     localSave = stob(HFFSettings["localSave"]);
     disableShadows = stob(HFFSettings["disableShadows"]);
     joystickFix = stob(HFFSettings["joystickFix"]);
+    cameraFov = std::stoi(HFFSettings["cameraFov"]);
+    cameraSmoothing = std::stoi(HFFSettings["cameraSmoothing"]);
+    advancedVideoClouds = std::stoi(HFFSettings["advancedVideoClouds"]);
 
     return JNI_VERSION_1_6;
 }
