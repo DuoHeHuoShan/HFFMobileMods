@@ -17,6 +17,7 @@ target_include_directories(
         HFFSettings
         PUBLIC
         ${BNM_INCLUDE_DIRECTORIES}
+        ../../BNMUtils
         # ...
 )
 target_link_libraries(

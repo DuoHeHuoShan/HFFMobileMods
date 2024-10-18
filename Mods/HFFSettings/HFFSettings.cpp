@@ -6,31 +6,12 @@
 #include "BNM/Utils.hpp"
 #include "BNM/Field.hpp"
 #include "BNM/UnityStructures.hpp"
+#include "Classes.hpp"
 #include <map>
 #include <string>
 #include <fstream>
 
 std::map<std::string, std::string> HFFSettings;
-
-BNM::Class HumanControls;
-BNM::MethodBase HumanControls_ReadInput;
-BNM::MethodBase HumanControls_get_calc_joyWalk;
-BNM::Field<float> HumanControls_lookHScale;
-BNM::Field<float> HumanControls_lookVScale;
-BNM::Class Ball;
-BNM::MethodBase Ball_OnEnable;
-BNM::Class GameObject;
-BNM::Method<BNM::UnityEngine::Object *> GameObject_Find;
-BNM::Method<void> GameObject_SetActive;
-BNM::Class GamePlayerPrefs;
-BNM::MethodBase GamePlayerPrefs_GetInt, GamePlayerPrefs_SetInt, GamePlayerPrefs_GetFloat, GamePlayerPrefs_SetFloat, GamePlayerPrefs_GetString, GamePlayerPrefs_SetString;
-BNM::Class UnityPlayerPrefs;
-BNM::MethodBase UnityPlayerPrefs_GetInt, UnityPlayerPrefs_SetInt, UnityPlayerPrefs_GetFloat, UnityPlayerPrefs_SetFloat, UnityPlayerPrefs_GetString, UnityPlayerPrefs_SetString;
-BNM::Class Options;
-BNM::MethodBase Options_Load;
-BNM::Method<void> Options_set_advancedVideoClouds;
-BNM::Method<void> Options_set_cameraSmoothing;
-BNM::Method<void> Options_set_cameraFov;
 
 float lookHScale = 12;
 float lookVScale = 5;
@@ -44,16 +25,15 @@ int advancedVideoClouds = 2;
 
 void (*old_ReadInput)(BNM::UnityEngine::Object *, void *);
 void new_ReadInput(BNM::UnityEngine::Object *thiz, void *outInputState) {
-    HumanControls_lookHScale[thiz].Set(lookHScale);
-    HumanControls_lookVScale[thiz].Set(lookVScale);
+    HumanControls::lookHScale[thiz].Set(lookHScale);
+    HumanControls::lookVScale[thiz].Set(lookVScale);
     old_ReadInput(thiz, outInputState);
 }
 
 void (*old_Ball_OnEnable)(BNM::UnityEngine::Object *);
 void new_Ball_OnEnable(BNM::UnityEngine::Object *thiz) {
     old_Ball_OnEnable(thiz);
-    if(disableShadows) ((void(*)(float))BNM::GetExternMethod("UnityEngine.QualitySettings::set_shadowDistance"))(0);
-    if(visibleBall) GameObject_SetActive[GameObject_Find(BNM::CreateMonoString("/Player(Clone)/Ball/Sphere"))](true);
+    if(visibleBall) UnityEngine::GameObject::SetActive[UnityEngine::GameObject::Find(BNM::CreateMonoString("/Player(Clone)/Ball/Sphere"))](true);
 }
 
 BNM::Structures::Unity::Vector3 (*old_HumanControls_get_calc_joyWalk)(BNM::UnityEngine::Object *);
@@ -66,63 +46,33 @@ BNM::Structures::Unity::Vector3 new_HumanControls_get_calc_joyWalk(BNM::UnityEng
 
 void (*old_Options_Load)();
 void new_Options_Load() {
-    Options_set_cameraFov(cameraFov);
-    Options_set_cameraSmoothing(cameraSmoothing);
-    Options_set_advancedVideoClouds(advancedVideoClouds);
+    Options::set_cameraFov(cameraFov);
+    Options::set_cameraSmoothing(cameraSmoothing);
+    Options::set_advancedVideoClouds(advancedVideoClouds);
+    if(disableShadows) UnityEngine::QualitySettings::shadowDistance = 0;
     old_Options_Load();
 }
 
 
 void ApplyLocalSave() {
     using namespace BNM;
-    GamePlayerPrefs = Class("Mobile.SaveGameSystem", "PlayerPrefs");
-    UnityPlayerPrefs = Class("UnityEngine", "PlayerPrefs");
 
-    GamePlayerPrefs_GetInt = GamePlayerPrefs.GetMethod("GetInt");
-    GamePlayerPrefs_SetInt = GamePlayerPrefs.GetMethod("SetInt");
-    GamePlayerPrefs_GetFloat = GamePlayerPrefs.GetMethod("GetFloat");
-    GamePlayerPrefs_SetFloat = GamePlayerPrefs.GetMethod("SetFloat");
-    GamePlayerPrefs_GetString = GamePlayerPrefs.GetMethod("GetString");
-    GamePlayerPrefs_SetString = GamePlayerPrefs.GetMethod("SetString");
-
-    UnityPlayerPrefs_GetInt = UnityPlayerPrefs.GetMethod("GetInt");
-    UnityPlayerPrefs_SetInt = UnityPlayerPrefs.GetMethod("SetInt");
-    UnityPlayerPrefs_GetFloat = UnityPlayerPrefs.GetMethod("GetFloat");
-    UnityPlayerPrefs_SetFloat = UnityPlayerPrefs.GetMethod("SetFloat");
-    UnityPlayerPrefs_GetString = UnityPlayerPrefs.GetMethod("GetString");
-    UnityPlayerPrefs_SetString = UnityPlayerPrefs.GetMethod("SetString");
-
-    HOOK(GamePlayerPrefs_GetInt, UnityPlayerPrefs_GetInt.GetInfo()->methodPointer, nullptr);
-    HOOK(GamePlayerPrefs_SetInt, UnityPlayerPrefs_SetInt.GetInfo()->methodPointer, nullptr);
-    HOOK(GamePlayerPrefs_GetFloat, UnityPlayerPrefs_GetFloat.GetInfo()->methodPointer, nullptr);
-    HOOK(GamePlayerPrefs_SetFloat, UnityPlayerPrefs_SetFloat.GetInfo()->methodPointer, nullptr);
-    HOOK(GamePlayerPrefs_GetString, UnityPlayerPrefs_GetString.GetInfo()->methodPointer, nullptr);
-    HOOK(GamePlayerPrefs_SetString, UnityPlayerPrefs_SetString.GetInfo()->methodPointer, nullptr);
+    HOOK(Mobile::SaveGameSystem::PlayerPrefs::GetInt, ::UnityEngine::PlayerPrefs::GetInt.GetInfo()->methodPointer, nullptr);
+    HOOK(Mobile::SaveGameSystem::PlayerPrefs::SetInt, ::UnityEngine::PlayerPrefs::SetInt.GetInfo()->methodPointer, nullptr);
+    HOOK(Mobile::SaveGameSystem::PlayerPrefs::GetFloat, ::UnityEngine::PlayerPrefs::GetFloat.GetInfo()->methodPointer, nullptr);
+    HOOK(Mobile::SaveGameSystem::PlayerPrefs::SetFloat, ::UnityEngine::PlayerPrefs::SetFloat.GetInfo()->methodPointer, nullptr);
+    HOOK(Mobile::SaveGameSystem::PlayerPrefs::GetString, ::UnityEngine::PlayerPrefs::GetString.GetInfo()->methodPointer, nullptr);
+    HOOK(Mobile::SaveGameSystem::PlayerPrefs::SetString, ::UnityEngine::PlayerPrefs::SetString.GetInfo()->methodPointer, nullptr);
 }
 
 void OnLoaded() {
     using namespace BNM;
-    HumanControls = Class("", "HumanControls");
-    HumanControls_ReadInput = HumanControls.GetMethod("ReadInput");
-    HumanControls_lookHScale = HumanControls.GetField("lookHScale");
-    HumanControls_lookVScale = HumanControls.GetField("lookVScale");
-    HumanControls_get_calc_joyWalk = HumanControls.GetMethod("get_calc_joyWalk");
-    Ball = Class("", "Ball");
-    Ball_OnEnable = Ball.GetMethod("OnEnable");
-    GameObject = Class("UnityEngine", "GameObject");
-    GameObject_Find = GameObject.GetMethod("Find");
-    GameObject_SetActive = GameObject.GetMethod("SetActive");
-    Options = Class("", "Options");
-    Options_Load = Options.GetMethod("Load");
-    Options_set_advancedVideoClouds = Options.GetMethod("set_advancedVideoClouds");
-    Options_set_cameraFov = Options.GetMethod("set_cameraFov");
-    Options_set_cameraSmoothing = Options.GetMethod("set_cameraSmoothing");
 
     if(localSave) ApplyLocalSave();
-    InvokeHook(Ball_OnEnable, new_Ball_OnEnable, old_Ball_OnEnable);
-    HOOK(HumanControls_ReadInput, new_ReadInput, old_ReadInput);
-    if(joystickFix) HOOK(HumanControls_get_calc_joyWalk, new_HumanControls_get_calc_joyWalk, old_HumanControls_get_calc_joyWalk);
-    HOOK(Options_Load, new_Options_Load, old_Options_Load);
+    InvokeHook(Ball::OnEnable, new_Ball_OnEnable, old_Ball_OnEnable);
+    HOOK(HumanControls::ReadInput, new_ReadInput, old_ReadInput);
+    if(joystickFix) HOOK(HumanControls::get_calc_joyWalk, new_HumanControls_get_calc_joyWalk, old_HumanControls_get_calc_joyWalk);
+    HOOK(Options::Load, new_Options_Load, old_Options_Load);
 }
 
 bool stob(const std::string &str) {
@@ -181,6 +131,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
     // Or load using KittyMemory (as an example)
     // Example_07();
 
+    BNM::Loading::AddOnLoadedEvent(BNMU_OnLoaded);
     BNM::Loading::AddOnLoadedEvent(OnLoaded);
 
     ReadSettings();
