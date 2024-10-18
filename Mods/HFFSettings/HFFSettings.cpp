@@ -44,6 +44,13 @@ BNM::Structures::Unity::Vector3 new_HumanControls_get_calc_joyWalk(BNM::UnityEng
     return ret;
 }
 
+void (*old_MobileControlScale_Start)(BNM::UnityEngine::Object *);
+void new_MobileControlScale_Start(BNM::UnityEngine::Object *thiz) {
+    old_MobileControlScale_Start(thiz);
+    BNM::UnityEngine::Object *touchStick = MobileControlScale::TouchStick[thiz];
+    if(touchStick) InControl::TouchStickControl::snapAngles[touchStick] = SnapAngles::Eight;
+}
+
 void (*old_Options_Load)();
 void new_Options_Load() {
     Options::set_cameraFov(cameraFov);
@@ -71,7 +78,11 @@ void OnLoaded() {
     if(localSave) ApplyLocalSave();
     InvokeHook(Ball::OnEnable, new_Ball_OnEnable, old_Ball_OnEnable);
     HOOK(HumanControls::ReadInput, new_ReadInput, old_ReadInput);
-    if(joystickFix) HOOK(HumanControls::get_calc_joyWalk, new_HumanControls_get_calc_joyWalk, old_HumanControls_get_calc_joyWalk);
+    if(joystickFix) {
+        InvokeHook(MobileControlScale::Start, new_MobileControlScale_Start, old_MobileControlScale_Start);
+        HOOK(HumanControls::get_calc_joyWalk, new_HumanControls_get_calc_joyWalk,
+             old_HumanControls_get_calc_joyWalk);
+    }
     HOOK(Options::Load, new_Options_Load, old_Options_Load);
 }
 

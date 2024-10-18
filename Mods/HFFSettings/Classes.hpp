@@ -51,3 +51,19 @@ BNMU_EndDefineClass()
 BNMU_BeginDefineClass(UnityEngine::QualitySettings, "UnityEngine", QualitySettings)
     BNMU_DefineProperty(BNM::Property<float>, shadowDistance)
 BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(MobileControlScale, "", MobileControlScale)
+    BNMU_DefineMethod(BNM::MethodBase, Start, -1)
+    BNMU_DefineField(BNM::Field<BNM::UnityEngine::Object *>, TouchStick)
+BNMU_EndDefineClass()
+
+enum SnapAngles {
+    None = 0,
+    Four = 4,
+    Eight = 8,
+    Sixteen = 16
+};
+
+BNMU_BeginDefineClass(InControl::TouchStickControl, "InControl", TouchStickControl)
+    BNMU_DefineField(BNM::Field<SnapAngles>, snapAngles)
+BNMU_EndDefineClass()
