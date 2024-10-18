@@ -22,6 +22,7 @@ bool joystickFix = false;
 int cameraFov = 5;
 int cameraSmoothing = 10;
 int advancedVideoClouds = 2;
+int targetFrameRate = -1;
 
 void (*old_ReadInput)(BNM::UnityEngine::Object *, void *);
 void new_ReadInput(BNM::UnityEngine::Object *thiz, void *outInputState) {
@@ -57,6 +58,7 @@ void new_Options_Load() {
     Options::set_cameraSmoothing(cameraSmoothing);
     Options::set_advancedVideoClouds(advancedVideoClouds);
     if(disableShadows) UnityEngine::QualitySettings::shadowDistance = 0;
+    if(targetFrameRate >= 0) UnityEngine::Application::targetFrameRate = targetFrameRate;
     old_Options_Load();
 }
 
@@ -110,6 +112,7 @@ void UseDefaultSettings() {
     HFFSettings["cameraFov"] = "5";
     HFFSettings["cameraSmoothing"] = "10";
     HFFSettings["advancedVideoClouds"] = "2";
+    HFFSettings["targetFrameRate"] = "-1";
 }
 
 void ReadSettings() {
@@ -155,6 +158,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
     cameraFov = std::stoi(HFFSettings["cameraFov"]);
     cameraSmoothing = std::stoi(HFFSettings["cameraSmoothing"]);
     advancedVideoClouds = std::stoi(HFFSettings["advancedVideoClouds"]);
+    targetFrameRate = std::stoi(HFFSettings["targetFrameRate"]);
 
     return JNI_VERSION_1_6;
 }
