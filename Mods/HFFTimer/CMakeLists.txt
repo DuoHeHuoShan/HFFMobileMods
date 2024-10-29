@@ -17,6 +17,8 @@ target_include_directories(
         HFFTimer
         PUBLIC
         ${BNM_INCLUDE_DIRECTORIES}
+        ../../BNMUtils
+        ../../BNMGUI
         # ...
 )
 target_link_libraries(

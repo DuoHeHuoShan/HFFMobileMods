@@ -6,18 +6,18 @@
 #include "BNM/Utils.hpp"
 #include "BNM/ClassesManagement.hpp"
 #include "BNM/UnityStructures.hpp"
-
-BNM::MethodBase HFFResources_Awake;
-BNM::Method<BNM::UnityEngine::Object *> Component_get_gameObject;
-BNM::Method<void> GameObject_AddComponentTimer;
-BNM::Class Input;
-
+#include "Classes.hpp"
+#include <BNMGUI.hpp>
 
 struct HFFTimer : BNM::UnityEngine::MonoBehaviour {
-    BNM_CustomClass(HFFTimer, BNM::CompileTimeClassBuilder(nullptr, OBFUSCATE_BNM("Delegates")).Build(), {}, {});
+    BNM_CustomClass(HFFTimer, BNM::CompileTimeClassBuilder(nullptr, "HFFTimer").Build(),
+                    BNM::CompileTimeClassBuilder(OBFUSCATE_BNM("UnityEngine"), OBFUSCATE_BNM("MonoBehaviour"), OBFUSCATE_BNM("UnityEngine.CoreModule")).Build(),
+                    {});
     void OnGUI() {
+        using namespace BNMGUI;
+        using namespace BNM::Structures::Unity;
         BNM_CallCustomMethodOrigin(OnGUI, this);
-
+        GUI::Label(Rect(0, 0, 20000, 20000), "OnGUI() called!");
     }
     BNM_CustomMethod(OnGUI, false, BNM::GetType<void>(), "OnGUI");
     BNM_CustomMethodSkipTypeMatch(OnGUI);
@@ -27,15 +27,12 @@ struct HFFTimer : BNM::UnityEngine::MonoBehaviour {
 void (*_HFFResources$Awake)(BNM::UnityEngine::Object *);
 void HFFResources$Awake(BNM::UnityEngine::Object *thiz) {
     _HFFResources$Awake(thiz);
-    GameObject_AddComponentTimer[Component_get_gameObject[thiz]()]();
+    UnityEngine::GameObject::AddComponent[UnityEngine::Component::gameObject[thiz]](BNM::Class(HFFTimer::BNMCustomClass.myClass).GetMonoType());
 }
 
 void OnLoaded() {
     using namespace BNM;
-    HFFResources_Awake = Class("", "HFFResources").GetMethod("Awake");
-    Component_get_gameObject = Class("UnityEngine", "Component").GetMethod("get_gameObject");
-    GameObject_AddComponentTimer = Class("UnityEngine", "GameObject").GetMethod("AddComponent", 0).GetGeneric({GetType<HFFTimer>()});
-    InvokeHook(HFFResources_Awake, HFFResources$Awake, _HFFResources$Awake);
+    InvokeHook(HFFResources::Awake, HFFResources$Awake, _HFFResources$Awake);
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
@@ -49,6 +46,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
     // Or load using KittyMemory (as an example)
     // Example_07();
 
+    BNM::Loading::AddOnLoadedEvent(BNMU_OnLoaded);
     BNM::Loading::AddOnLoadedEvent(OnLoaded);
 
     return JNI_VERSION_1_6;
