@@ -3,6 +3,7 @@
 #include "UserSettings/GlobalSettings.hpp"
 #include "Method.hpp"
 #include "BasicMonoStructures.hpp"
+#include "Utils.hpp"
 
 namespace BNM {
 
@@ -14,16 +15,18 @@ namespace BNM {
     struct DelegateBase : IL2CPP::Il2CppDelegate {
         inline constexpr DelegateBase() = default;
 
-        inline IL2CPP::Il2CppObject* GetInstance() { return std::launder(this) ? target : nullptr; }
+        inline IL2CPP::Il2CppObject* GetInstance() {
+            return CheckForNull(this) ? target : nullptr;
+        }
         inline MethodBase GetMethod() {
-            if (!std::launder(this)) return {};
+            if (!CheckForNull(this)) return {};
             auto method = MethodBase(this->method);
             auto instance = GetInstance();
             if (instance) method.SetInstance(instance);
-            return std::move(method);
+            return method;
         }
 
-        inline bool Initialized() const noexcept { return std::launder(this); }
+        [[nodiscard]] inline bool Initialized() const noexcept { return CheckForNull(this); }
         inline operator bool() noexcept { return Initialized(); }
         inline operator bool() const noexcept { return Initialized(); }
         template<typename NewRet>
@@ -34,10 +37,13 @@ namespace BNM {
         inline constexpr MulticastDelegateBase() = default;
 
         inline std::vector<MethodBase> GetMethods() {
-            std::vector<MethodBase> ret{};
-            if (!std::launder(this)) return ret;
+            if (!CheckForNull(this)) return {};
 
             auto delegates = (Structures::Mono::Array<DelegateBase *> *) this->delegates;
+            if (!delegates) return {((DelegateBase *)this)->GetMethod()};
+
+            std::vector<MethodBase> ret{};
+            ret.reserve(delegates->capacity);
             for (IL2CPP::il2cpp_array_size_t i = 0; i < delegates->capacity; ++i) ret.push_back(delegates->At(i)->GetMethod());
             return std::move(ret);
         }
@@ -64,7 +70,7 @@ namespace BNM {
     struct MulticastDelegate : public MulticastDelegateBase {
         template<typename ...Params>
         inline Ret Invoke(Params ...params) {
-            if (!std::launder(this)) { if constexpr (std::is_same<Ret, void>::value) return; else return {}; }
+            if (!CheckForNull(this)) return BNM::PRIVATE_INTERNAL::ReturnEmpty<Ret>();
 
             auto delegates = (Structures::Mono::Array<DelegateBase *> *) this->delegates;
             if (!delegates) return ((Delegate<Ret>*)this)->Invoke(params...);

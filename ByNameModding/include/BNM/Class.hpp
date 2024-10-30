@@ -7,6 +7,7 @@
 #include "Il2CppHeaders.hpp"
 #include "Image.hpp"
 #include "BasicMonoStructures.hpp"
+#include "Defaults.hpp"
 
 namespace BNM {
     struct CompileTimeClass;
@@ -115,18 +116,18 @@ namespace BNM {
 #ifdef BNM_ALLOW_STR_METHODS
         // Get information about the class
         [[nodiscard]] inline std::string str() const {
-            if (!_data) return OBFUSCATE_BNM(DBG_BNM_MSG_Class_str_nullptr);
+            if (!_data) return BNM_OBFUSCATE(DBG_BNM_MSG_Class_str_nullptr);
             TryInit();
             std::string data{};
             if (_data->declaringType) {
-                data += Class(_data->declaringType).str() + OBFUSCATE_BNM("<-");
+                data += Class(_data->declaringType).str() + BNM_OBFUSCATE("<-");
                 data += '[';
                 data += _data->name;
                 data += ']';
             } else {
-                data += OBFUSCATE_BNM("[");
-                data += _data->image->name + std::string(OBFUSCATE_BNM("]::["));
-                data += _data->namespaze + std::string(OBFUSCATE_BNM("]::[")) + _data->name + OBFUSCATE_BNM("]");
+                data += BNM_OBFUSCATE("[");
+                data += _data->image->name + std::string(BNM_OBFUSCATE("]::["));
+                data += _data->namespaze + std::string(BNM_OBFUSCATE("]::[")) + _data->name + BNM_OBFUSCATE("]");
             }
 
             return data;
@@ -151,8 +152,11 @@ namespace BNM {
             None, Array, Pointer, Reference
         };
         std::list<_BaseInfo *> _stack{};
-        bool _autoFree{true};
-        Class _loadedClass{};
+        union {
+            Class _loadedClass{};
+            Defaults::Internal::ClassType *reference;
+        };
+        uint8_t _autoFree : 1{true}, _isReferenced{false};
         Class ToClass();
         IL2CPP::Il2CppType *ToIl2CppType();
         IL2CPP::Il2CppClass *ToIl2CppClass();
@@ -179,7 +183,7 @@ namespace BNM {
             const char *_namespace{}, *_name{}, *_imageName{};
         };
         struct _InnerInfo : _BaseInfo {
-            _InnerInfo(const char *_name) : _BaseInfo(_BaseType::Class), _name(_name) {}
+            _InnerInfo(const char *_name) : _BaseInfo(_BaseType::Inner), _name(_name) {}
             const char *_name{};
         };
         struct _ModifierInfo : _BaseInfo {
@@ -187,34 +191,9 @@ namespace BNM {
             ModifierType _modifierType{ModifierType::None};
         };
         struct _GenericInfo : _BaseInfo {
-            _GenericInfo(const std::vector<CompileTimeClass> &_types) : _BaseInfo(_BaseType::Generic), _types(_types) {}
+            _GenericInfo(const std::initializer_list<CompileTimeClass> &_types) : _BaseInfo(_BaseType::Generic), _types(_types) {}
             std::vector<CompileTimeClass> _types{};
         };
-    };
-
-    struct ConstexprCompileTimeClass {
-        const char *_namespace{}, *_name{}, *_imageName{};
-        CompileTimeClass::ModifierType _modifier{};
-        [[nodiscard]] inline CompileTimeClass ToCompileTimeClass() const {
-            CompileTimeClass result{};
-
-            auto info = (CompileTimeClass::_ClassInfo *) BNM_malloc(sizeof(CompileTimeClass::_ClassInfo));
-            *info = CompileTimeClass::_ClassInfo{_namespace, _name, _imageName};
-            result._stack.push_back(info);
-
-            if (_modifier != CompileTimeClass::ModifierType::None) {
-                auto modifier = (CompileTimeClass::_ModifierInfo *) BNM_malloc(sizeof(CompileTimeClass::_ModifierInfo));
-                *modifier = CompileTimeClass::_ModifierInfo{_modifier};
-                result._stack.push_back(modifier);
-            }
-
-            return std::move(result);
-        }
-        [[nodiscard]] inline Class ToClass() const {
-            return ToCompileTimeClass().ToClass();
-        }
-        inline operator CompileTimeClass() const { return ToCompileTimeClass(); }
-        inline operator Class() const { return ToClass(); }
     };
 
     struct CompileTimeClassBuilder {
@@ -239,6 +218,7 @@ namespace BNM {
         }
         inline CompileTimeClassBuilder &Generic(const std::initializer_list<CompileTimeClass> &genericTypes) {
             auto generic = (CompileTimeClass::_GenericInfo *) BNM_malloc(sizeof(CompileTimeClass::_GenericInfo));
+            memset(generic, 0, sizeof(CompileTimeClass::_GenericInfo));
             *generic = CompileTimeClass::_GenericInfo{genericTypes};
             _data._stack.push_back(generic);
             return *this;
@@ -260,87 +240,14 @@ namespace BNM {
         return lst;
     }
 
-    namespace Structures::Unity {
-        struct Vector2;
-        struct Vector3;
-        struct Color;
-        struct Color32;
-        struct Ray;
-        struct RaycastHit;
-        struct Quaternion;
-    }
-    namespace UnityEngine {
-        struct Object;
-        struct MonoBehaviour;
-    }
-    namespace Coroutine { struct IEnumerator; }
-
-    // Save the name of the base types at compile time
-    template<typename T>
-    constexpr ConstexprCompileTimeClass GetType(CompileTimeClass::ModifierType modifier = CompileTimeClass::ModifierType::None) noexcept {
-        using namespace Structures::Unity;
-        using namespace Structures::Mono;
-
-        if constexpr (std::is_same_v<T, void>)
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("Void"), OBFUSCATE_BNM("mscorlib"), modifier};
-        else if constexpr (std::is_same_v<T, bool>)
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("Boolean"), OBFUSCATE_BNM("mscorlib"), modifier};
-        else if constexpr (std::is_same_v<T, uint8_t>)
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("Byte"), OBFUSCATE_BNM("mscorlib"), modifier};
-        else if constexpr (std::is_same_v<T, int8_t>)
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("SByte"), OBFUSCATE_BNM("mscorlib"), modifier};
-        else if constexpr (std::is_same_v<T, int16_t>)
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("Int16"), OBFUSCATE_BNM("mscorlib"), modifier};
-        else if constexpr (std::is_same_v<T, uint16_t>)
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("UInt16"), OBFUSCATE_BNM("mscorlib"), modifier};
-        else if constexpr (std::is_same_v<T, int32_t>)
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("Int32"), OBFUSCATE_BNM("mscorlib"), modifier};
-        else if constexpr (std::is_same_v<T, uint32_t>)
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("UInt32"), OBFUSCATE_BNM("mscorlib"), modifier};
-        else if constexpr (std::is_same_v<T, intptr_t>)
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("IntPtr"), OBFUSCATE_BNM("mscorlib"), modifier};
-        else if constexpr (std::is_same_v<T, int64_t>)
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("Int64"), OBFUSCATE_BNM("mscorlib"), modifier};
-        else if constexpr (std::is_same_v<T, uint64_t>)
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("UInt64"), OBFUSCATE_BNM("mscorlib"), modifier};
-        else if constexpr (std::is_same_v<T, float>)
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("Single"), OBFUSCATE_BNM("mscorlib"), modifier};
-        else if constexpr (std::is_same_v<T, double>)
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("Double"), OBFUSCATE_BNM("mscorlib"), modifier};
-        else if constexpr (std::is_same_v<T, BNM::IL2CPP::Il2CppString *> || std::is_same_v<T, Structures::Mono::String *>)
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("String"), OBFUSCATE_BNM("mscorlib"), modifier};
-        else if constexpr (std::is_same_v<T, Vector3>)
-            return {OBFUSCATE_BNM("UnityEngine"), OBFUSCATE_BNM("Vector3"), OBFUSCATE_BNM("UnityEngine.CoreModule"), modifier};
-        else if constexpr (std::is_same_v<T, Vector2>)
-            return {OBFUSCATE_BNM("UnityEngine"), OBFUSCATE_BNM("Vector2"), OBFUSCATE_BNM("UnityEngine.CoreModule"), modifier};
-        else if constexpr (std::is_same_v<T, Color>)
-            return {OBFUSCATE_BNM("UnityEngine"), OBFUSCATE_BNM("Color"), OBFUSCATE_BNM("UnityEngine.CoreModule"), modifier};
-        else if constexpr (std::is_same_v<T, Color32>)
-            return {OBFUSCATE_BNM("UnityEngine"), OBFUSCATE_BNM("Color32"), OBFUSCATE_BNM("UnityEngine.CoreModule"), modifier};
-        else if constexpr (std::is_same_v<T, Ray>)
-            return {OBFUSCATE_BNM("UnityEngine"), OBFUSCATE_BNM("Ray"), OBFUSCATE_BNM("UnityEngine.CoreModule"), modifier};
-        else if constexpr (std::is_same_v<T, RaycastHit>)
-            return {OBFUSCATE_BNM("UnityEngine"), OBFUSCATE_BNM("RaycastHit"), OBFUSCATE_BNM("UnityEngine.PhysicsModule"), modifier};
-        else if constexpr (std::is_same_v<T, Quaternion>)
-            return {OBFUSCATE_BNM("UnityEngine"), OBFUSCATE_BNM("Quaternion"), OBFUSCATE_BNM("UnityEngine.CoreModule"), modifier};
-        else if constexpr (std::is_same_v<T, BNM::UnityEngine::Object *>)
-            return {OBFUSCATE_BNM("UnityEngine"), OBFUSCATE_BNM("Object"), OBFUSCATE_BNM("UnityEngine.CoreModule"), modifier};
-        else if constexpr (std::is_same_v<T, BNM::UnityEngine::MonoBehaviour *>)
-            return {OBFUSCATE_BNM("UnityEngine"), OBFUSCATE_BNM("MonoBehaviour"), OBFUSCATE_BNM("UnityEngine.CoreModule"), modifier};
-        else if constexpr (std::is_same_v<T, BNM::Coroutine::IEnumerator> || std::is_same_v<T, BNM::Coroutine::IEnumerator *>)
-            return {OBFUSCATE_BNM("BNM"), OBFUSCATE_BNM("IEnumerator"), OBFUSCATE_BNM("Assembly-CSharp"), modifier};
-        else
-            return {OBFUSCATE_BNM("System"), OBFUSCATE_BNM("Object"), OBFUSCATE_BNM("mscorlib"), modifier};
-    }
-
     // Methods for checking object class
     template<typename T, typename = std::enable_if<std::is_pointer<T>::value>>
-    bool IsA(T object, IL2CPP::Il2CppClass *klass) { return IsA<BNM::IL2CPP::Il2CppObject *>((IL2CPP::Il2CppObject *)object, klass); }
-    template<> bool IsA<IL2CPP::Il2CppObject *>(IL2CPP::Il2CppObject *object, IL2CPP::Il2CppClass *klass);
+    bool IsA(T object, IL2CPP::Il2CppClass *_class) { return IsA<BNM::IL2CPP::Il2CppObject *>((IL2CPP::Il2CppObject *)object, _class); }
+    template<> bool IsA<IL2CPP::Il2CppObject *>(IL2CPP::Il2CppObject *object, IL2CPP::Il2CppClass *_class);
     template<typename T, typename = std::enable_if<std::is_pointer<T>::value>>
-    bool IsA(T object, Class klass) { return IsA(object, klass.GetClass()); }
+    bool IsA(T object, Class _class) { return IsA(object, _class.GetClass()); }
     template<typename T, typename = std::enable_if<std::is_pointer<T>::value>>
-    bool IsA(T object, IL2CPP::Il2CppObject *klass) { if (!klass) return false; return IsA(object, klass->klass); }
+    bool IsA(T object, IL2CPP::Il2CppObject *_class) { if (!_class) return false; return IsA(object, _class->klass); }
     template<typename T, typename = std::enable_if<std::is_pointer<T>::value>>
     bool IsA(T object, MonoType *type) { return IsA(object, Class(type)); }
 

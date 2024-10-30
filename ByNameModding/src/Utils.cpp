@@ -1,16 +1,12 @@
 #include <BNM/UserSettings/GlobalSettings.hpp>
 #include <BNM/Utils.hpp>
 #include <BNM/Method.hpp>
-#include "Internals.hpp"
+#include <Internals.hpp>
 
 using namespace BNM;
 
-Structures::Mono::String *BNM::CreateMonoString(const char *str) {
-    return Internal::il2cppMethods.il2cpp_string_new(str);
-}
-
 Structures::Mono::String *BNM::CreateMonoString(const std::string_view &str) {
-    return CreateMonoString(str.data());
+    return Internal::il2cppMethods.il2cpp_string_new(str.data());
 }
 
 void *BNM::GetExternMethod(const std::string_view &str) {
@@ -21,7 +17,7 @@ void *BNM::GetExternMethod(const std::string_view &str) {
 }
 
 bool BNM::IsLoaded() {
-    return Internal::state;
+    return Internal::states.state;
 }
 
 void *BNM::GetIl2CppLibraryHandle() {
@@ -65,99 +61,22 @@ bool BNM::VirtualHookImpl(BNM::Class targetClass, IL2CPP::MethodInfo *m, void *n
     return false;
 }
 
-template<> bool BNM::IsA<IL2CPP::Il2CppObject *>(IL2CPP::Il2CppObject *object, IL2CPP::Il2CppClass *klass) {
-    if (!object || !klass) return false;
-    for (auto cls = object->klass; cls; cls = cls->parent) if (cls == klass) return true;
+template<> bool BNM::IsA<IL2CPP::Il2CppObject *>(IL2CPP::Il2CppObject *object, IL2CPP::Il2CppClass *_class) {
+    if (!object || !_class) return false;
+    for (auto cls = object->klass; cls; cls = cls->parent) if (cls == _class) return true;
     return false;
-}
-
-IL2CPP::Il2CppClass *Internal::TryGetClassInImage(const IL2CPP::Il2CppImage *image, const std::string_view &_namespace, const std::string_view &_name) {
-    if (!image) return nullptr;
-
-#ifdef BNM_CLASSES_MANAGEMENT
-    // Получить BNM-классы
-    if (image->nameToClassHashTable == (decltype(image->nameToClassHashTable))-0x424e4d) goto NEW_CLASSES;
-#endif
-
-    if (Internal::il2cppMethods.il2cpp_image_get_class) {
-        size_t typeCount = image->typeCount;
-
-        for (size_t i = 0; i < typeCount; ++i) {
-            auto cls = il2cppMethods.il2cpp_image_get_class(image, i);
-            if (strcmp(OBFUSCATE_BNM("<Module>"), cls->name) == 0 || cls->declaringType) continue;
-            if (_namespace == cls->namespaze && _name == cls->name) return cls;
-        }
-    } else {
-        std::vector<IL2CPP::Il2CppClass *> classes{};
-        Internal::Image$$GetTypes(image, false, &classes);
-
-        for (auto cls : classes) {
-            if (!cls) continue;
-            Internal::Class$$Init(cls);
-            if (cls->declaringType) continue;
-            if (cls->namespaze == _namespace && cls->name == _name) return cls;
-        }
-    }
-
-#ifdef BNM_CLASSES_MANAGEMENT
-    NEW_CLASSES:
-    IL2CPP::Il2CppClass *result = nullptr;
-    ClassesManagement::BNMClassesMap.ForEachByImage(image, [&_namespace, &_name, &result](IL2CPP::Il2CppClass *BNM_class) -> bool {
-        if (_namespace != BNM_class->namespaze || _name != BNM_class->name) return false;
-
-        result = BNM_class;
-        return true;
-    });
-    return result;
-#endif
-
-    return nullptr;
-}
-Class Internal::TryMakeGenericClass(Class genericType, const std::vector<CompileTimeClass> &templateTypes) {
-    if (!vmData.RuntimeType$$MakeGenericType.Initialized()) return {};
-    auto monoType = genericType.GetMonoType();
-    auto monoGenericsList = Structures::Mono::Array<MonoType *>::Create(templateTypes.size());
-    for (IL2CPP::il2cpp_array_size_t i = 0; i < (IL2CPP::il2cpp_array_size_t) templateTypes.size(); ++i)
-        (*monoGenericsList)[i] = templateTypes[i].ToClass().GetMonoType();
-    Class typedGenericType = vmData.RuntimeType$$MakeGenericType(monoType, monoGenericsList);
-    monoGenericsList->Destroy();
-    return typedGenericType;
-}
-
-MethodBase Internal::TryMakeGenericMethod(const MethodBase &genericMethod, const std::vector<CompileTimeClass> &templateTypes) {
-    if (!vmData.RuntimeMethodInfo$$MakeGenericMethod_impl.Initialized() || !genericMethod.GetInfo()->is_generic) return {};
-    IL2CPP::Il2CppReflectionMethod reflectionMethod;
-    reflectionMethod.method = genericMethod.GetInfo();
-    auto monoGenericsList = Structures::Mono::Array<MonoType *>::Create(templateTypes.size());
-    for (IL2CPP::il2cpp_array_size_t i = 0; i < (IL2CPP::il2cpp_array_size_t) templateTypes.size(); ++i) (*monoGenericsList)[i] = templateTypes[i].ToClass().GetMonoType();
-
-    MethodBase typedGenericMethod = vmData.RuntimeMethodInfo$$MakeGenericMethod_impl[(void *)&reflectionMethod](monoGenericsList)->method;
-
-    monoGenericsList->Destroy();
-
-    return typedGenericMethod;
-}
-
-Class Internal::GetPointer(Class target) {
-    if (!vmData.RuntimeType$$MakePointerType.Initialized()) return {};
-    return vmData.RuntimeType$$MakePointerType(target.GetMonoType());
-}
-
-Class Internal::GetReference(Class target) {
-    if (!vmData.RuntimeType$$make_byref_type.Initialized()) return {};
-    return vmData.RuntimeType$$make_byref_type[(void *)target.GetMonoType()]();
 }
 
 #ifdef BNM_DEBUG
 
-const char *CompileTimeClassModifiers[] = {
+static const char *CompileTimeClassModifiers[] = {
         "None",
         "Array",
         "Pointer",
         "Reference"
 };
 
-void LogCompileTimeClassInfo(BNM::CompileTimeClass::_BaseInfo *info, const BNM::CompileTimeClass &tmp) {
+static void LogCompileTimeClassInfo(BNM::CompileTimeClass::_BaseInfo *info, const BNM::CompileTimeClass &tmp) {
     switch (info->_baseType) {
         case BNM::CompileTimeClass::_BaseType::None:
             BNM_LOG_ERR("\tNone");
@@ -208,3 +127,19 @@ void BNM::Utils::LogCompileTimeClass(const BNM::CompileTimeClass &compileTimeCla
 
 }
 #endif
+
+bool BNM::AttachIl2Cpp() {
+    if (CurrentIl2CppThread()) return false;
+    Internal::il2cppMethods.il2cpp_thread_attach(Internal::il2cppMethods.il2cpp_domain_get());
+    return true;
+}
+
+IL2CPP::Il2CppThread *BNM::CurrentIl2CppThread() {
+    return Internal::il2cppMethods.il2cpp_thread_current(Internal::il2cppMethods.il2cpp_domain_get());
+}
+
+void BNM::DetachIl2Cpp() {
+    auto thread = BNM::CurrentIl2CppThread();
+    if (!thread) return;
+    Internal::il2cppMethods.il2cpp_thread_detach(thread);
+}

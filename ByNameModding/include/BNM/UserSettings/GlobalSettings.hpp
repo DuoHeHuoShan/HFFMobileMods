@@ -1,5 +1,5 @@
 #if __cplusplus < 202002L
-static_assert(false, "ByNameModding требуется C++20 и выше!");
+static_assert(false, "ByNameModding requires C++20 and above!");
 #endif
 
 #pragma once
@@ -86,7 +86,10 @@ static_assert(false, "ByNameModding требуется C++20 и выше!");
 
 //! Добавьте ваш шифровщик строк
 //! Add your string encryptor
-#define OBFUSCATE_BNM(str) str // const char *
+#define BNM_OBFUSCATE(str) str // const char *
+//! Data obfuscated using this macro, can be freed, after BNM loaded. Only for advanced users! If you don't know what and how, just use your basic macro here.
+//! Данные, защифрованне этим define, могут быть удалены после загрузки BNM. Только для опытных пользователей! Если вы не знаете, что и как, просто используйте свой базовый define.
+#define BNM_OBFUSCATE_TMP(str) str // const char *
 
 // Shadowhook
 /*
@@ -110,7 +113,6 @@ inline void UNHOOK(PTR_T ptr) {
 
 
 // Dobby
-
 #include <dobby.h>
 
 template<typename PTR_T, typename NEW_T, typename T_OLD>
@@ -130,29 +132,30 @@ inline void UNHOOK(PTR_T ptr) {
     if ((void *) ptr != nullptr) DobbyDestroy((void *)ptr);
 }
 
-
 // Dummy
+/*
 #include <cassert>
 
-//template<typename PTR_T, typename NEW_T, typename T_OLD>
-//inline void *HOOK(PTR_T ptr, NEW_T newMethod, T_OLD &oldBytes) {
-//    assert("Нет ПО для подмены! (No hooking software!)");
-//    if ((void *) ptr != nullptr) ((void)0);
-//    return nullptr;
-//}
-//
-//template<typename PTR_T, typename NEW_T, typename T_OLD>
-//inline void *HOOK(PTR_T ptr, NEW_T newMethod, T_OLD &&oldBytes) {
-//    assert("Нет ПО для подмены! (No hooking software!)");
-//    if ((void *) ptr != nullptr) ((void)0);
-//    return nullptr;
-//}
-//
-//template<typename PTR_T>
-//inline void UNHOOK(PTR_T ptr) {
-//    assert("Нет ПО для подмены! (No hooking software!)");
-//    if ((void *) ptr != nullptr) ((void)0);
-//}
+template<typename PTR_T, typename NEW_T, typename T_OLD>
+inline void *HOOK(PTR_T ptr, NEW_T newMethod, T_OLD &oldBytes) {
+    assert("Нет ПО для подмены! (No hooking software!)");
+    if ((void *) ptr != nullptr) ((void)0);
+    return nullptr;
+}
+
+template<typename PTR_T, typename NEW_T, typename T_OLD>
+inline void *HOOK(PTR_T ptr, NEW_T newMethod, T_OLD &&oldBytes) {
+    assert("Нет ПО для подмены! (No hooking software!)");
+    if ((void *) ptr != nullptr) ((void)0);
+    return nullptr;
+}
+
+template<typename PTR_T>
+inline void UNHOOK(PTR_T ptr) {
+    assert("Нет ПО для подмены! (No hooking software!)");
+    if ((void *) ptr != nullptr) ((void)0);
+}
+*/
 
 #include <dlfcn.h>
 
@@ -221,4 +224,4 @@ namespace BNM {
 #endif
 }
 
-#define BNM_VER "2.0"
+#define BNM_VER "2.2.3"

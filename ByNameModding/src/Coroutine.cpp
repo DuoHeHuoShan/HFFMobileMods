@@ -1,48 +1,47 @@
 #include <BNM/Coroutine.hpp>
 
-#ifdef BNM_CLASSES_MANAGEMENT
-#ifdef BNM_COROUTINE
+#if defined(BNM_CLASSES_MANAGEMENT) && defined(BNM_COROUTINE)
 
-#include "Internals.hpp"
+#include <Internals.hpp>
 
 namespace Classes {
-    BNM::Class AsyncOperation{}, WaitForEndOfFrame{}, WaitForFixedUpdate{}, WaitForSeconds{}, WaitForSecondsRealtime{};
+    static BNM::Class AsyncOperation{}, WaitForEndOfFrame{}, WaitForFixedUpdate{}, WaitForSeconds{}, WaitForSecondsRealtime{};
 }
 
 namespace IEnumeratorData {
-    BNM::MANAGEMENT_STRUCTURES::CustomClass customClass{};
-    BNM::MANAGEMENT_STRUCTURES::CustomMethod customMethod_Finalize{}, customMethod_MoveNext{}, customMethod_Reset{}, customMethod_Current{};
+    static BNM::MANAGEMENT_STRUCTURES::CustomClass customClass{};
+    static BNM::MANAGEMENT_STRUCTURES::CustomMethod customMethod_Finalize{}, customMethod_MoveNext{}, customMethod_Reset{}, customMethod_Current{};
 }
 
 namespace CustomWaitData {
-    BNM::MANAGEMENT_STRUCTURES::CustomClass customClass{};
-    BNM::MANAGEMENT_STRUCTURES::CustomMethod customMethod_Finalize{}, customMethod_MoveNext{}, customMethod_Reset{}, customMethod_Current{};
+    static BNM::MANAGEMENT_STRUCTURES::CustomClass customClass{};
+    static BNM::MANAGEMENT_STRUCTURES::CustomMethod customMethod_Finalize{}, customMethod_MoveNext{}, customMethod_Reset{}, customMethod_Current{};
 }
 
 struct CustomWait : BNM::IL2CPP::Il2CppObject {
     std::function<bool()> _func{};
     bool _isUntil = false;
     void Finalize() { this->~CustomWait(); }
-    bool MoveNext() { return _isUntil == !_func(); }
+    [[nodiscard]] bool MoveNext() const { return _isUntil == !_func(); }
     void Reset() {}
-    Il2CppObject *Current() { return nullptr; }
+    [[nodiscard]] static Il2CppObject *Current() { return nullptr; }
 };
 
 struct BNM::Coroutine::_IEnumeratorInit {
-    inline static void _Init() {
+    inline static void Init() {
         using namespace IEnumeratorData;
         customClass._size = sizeof(IEnumerator);
-        customClass._targetType = BNM::CompileTimeClassBuilder(OBFUSCATE_BNM("BNM.Coroutine"), OBFUSCATE_BNM("IEnumerator")).Build();
+        customClass._targetType = BNM::CompileTimeClassBuilder(BNM_OBFUSCATE_TMP("BNM.Coroutine"), BNM_OBFUSCATE_TMP("IEnumerator")).Build();
         customClass._baseType = {};
         customClass._owner = {};
-        customClass._interfaces = { BNM::CompileTimeClassBuilder(OBFUSCATE_BNM("System.Collections"), OBFUSCATE_BNM("IEnumerator"), OBFUSCATE_BNM("mscorlib.dll")).Build() };
+        customClass._interfaces = { BNM::CompileTimeClassBuilder(BNM_OBFUSCATE_TMP("System.Collections"), BNM_OBFUSCATE_TMP("IEnumerator"), BNM_OBFUSCATE_TMP("mscorlib.dll")).Build() };
         BNM::MANAGEMENT_STRUCTURES::AddClass(&customClass);
         {
             constexpr auto p = &IEnumerator::Finalize;
             customMethod_Finalize._address = *(void **) &p;
             customMethod_Finalize._invoker = (void *) &BNM::MANAGEMENT_STRUCTURES::GetMethodInvoker<false, decltype(&IEnumerator::Finalize)>::Invoke;
-            customMethod_Finalize._name = OBFUSCATE_BNM("Finalize");
-            customMethod_Finalize._returnType = BNM::GetType<void>();
+            customMethod_Finalize._name = BNM_OBFUSCATE_TMP("Finalize");
+            customMethod_Finalize._returnType = BNM::Defaults::Get<void>();
             customMethod_Finalize._isStatic = false;
             customMethod_Finalize._parameterTypes = {};
             customClass._methods.push_back(&customMethod_Finalize);
@@ -51,8 +50,8 @@ struct BNM::Coroutine::_IEnumeratorInit {
             constexpr auto p = &IEnumerator::MoveNext;
             customMethod_MoveNext._address = *(void **) &p;
             customMethod_MoveNext._invoker = (void *) &BNM::MANAGEMENT_STRUCTURES::GetMethodInvoker<false, decltype(&IEnumerator::MoveNext)>::Invoke;
-            customMethod_MoveNext._name = OBFUSCATE_BNM("MoveNext");
-            customMethod_MoveNext._returnType = BNM::GetType<bool>();
+            customMethod_MoveNext._name = BNM_OBFUSCATE_TMP("MoveNext");
+            customMethod_MoveNext._returnType = BNM::Defaults::Get<bool>();
             customMethod_MoveNext._isStatic = false;
             customMethod_MoveNext._parameterTypes = {};
             customClass._methods.push_back(&customMethod_MoveNext);
@@ -61,8 +60,8 @@ struct BNM::Coroutine::_IEnumeratorInit {
             constexpr auto p = &IEnumerator::Reset;
             customMethod_Reset._address = *(void **) &p;
             customMethod_Reset._invoker = (void *) &BNM::MANAGEMENT_STRUCTURES::GetMethodInvoker<false, decltype(&IEnumerator::Reset)>::Invoke;
-            customMethod_Reset._name = OBFUSCATE_BNM("Reset");
-            customMethod_Reset._returnType = BNM::GetType<void>();
+            customMethod_Reset._name = BNM_OBFUSCATE_TMP("Reset");
+            customMethod_Reset._returnType = BNM::Defaults::Get<void>();
             customMethod_Reset._isStatic = false;
             customMethod_Reset._parameterTypes = {};
             customClass._methods.push_back(&customMethod_Reset);
@@ -71,30 +70,31 @@ struct BNM::Coroutine::_IEnumeratorInit {
             constexpr auto p = &IEnumerator::Current;
             customMethod_Current._address = *(void **) &p;
             customMethod_Current._invoker = (void *) &BNM::MANAGEMENT_STRUCTURES::GetMethodInvoker<false, decltype(&IEnumerator::Current)>::Invoke;
-            customMethod_Current._name = OBFUSCATE_BNM("get_Current");
-            customMethod_Current._returnType = BNM::GetType<BNM::IL2CPP::Il2CppObject *>();
+            customMethod_Current._name = BNM_OBFUSCATE_TMP("get_Current");
+            customMethod_Current._returnType = BNM::Defaults::Get<BNM::IL2CPP::Il2CppObject *>();
+            customMethod_Current._isStatic = false;
+            customMethod_Current._parameterTypes = {};
             customClass._methods.push_back(&customMethod_Current);
         }
     }
 };
 
-
 void BNM::Internal::SetupCoroutine() {
-    Coroutine::_IEnumeratorInit::_Init();
+    Coroutine::_IEnumeratorInit::Init();
 
     using namespace CustomWaitData;
     customClass._size = sizeof(CustomWait);
-    customClass._targetType = BNM::CompileTimeClassBuilder(OBFUSCATE_BNM("BNM.Coroutine"), OBFUSCATE_BNM("CustomWait")).Build();
+    customClass._targetType = BNM::CompileTimeClassBuilder(BNM_OBFUSCATE_TMP("BNM.Coroutine"), BNM_OBFUSCATE_TMP("CustomWait")).Build();
     customClass._baseType = {};
     customClass._owner = {};
-    customClass._interfaces = { BNM::CompileTimeClassBuilder(OBFUSCATE_BNM("System.Collections"), OBFUSCATE_BNM("IEnumerator"), OBFUSCATE_BNM("mscorlib.dll")).Build() };
+    customClass._interfaces = { BNM::CompileTimeClassBuilder(BNM_OBFUSCATE_TMP("System.Collections"), BNM_OBFUSCATE_TMP("IEnumerator"), BNM_OBFUSCATE_TMP("mscorlib.dll")).Build() };
     BNM::MANAGEMENT_STRUCTURES::AddClass(&customClass);
     {
         constexpr auto p = &CustomWait::Finalize;
         customMethod_Finalize._address = *(void **) &p;
         customMethod_Finalize._invoker = (void *) &BNM::MANAGEMENT_STRUCTURES::GetMethodInvoker<false, decltype(&CustomWait::Finalize)>::Invoke;
-        customMethod_Finalize._name = OBFUSCATE_BNM("Finalize");
-        customMethod_Finalize._returnType = BNM::GetType<void>();
+        customMethod_Finalize._name = BNM_OBFUSCATE_TMP("Finalize");
+        customMethod_Finalize._returnType = BNM::Defaults::Get<void>();
         customMethod_Finalize._isStatic = false;
         customMethod_Finalize._parameterTypes = {};
         customClass._methods.push_back(&customMethod_Finalize);
@@ -103,8 +103,8 @@ void BNM::Internal::SetupCoroutine() {
         constexpr auto p = &CustomWait::MoveNext;
         customMethod_MoveNext._address = *(void **) &p;
         customMethod_MoveNext._invoker = (void *) &BNM::MANAGEMENT_STRUCTURES::GetMethodInvoker<false, decltype(&CustomWait::MoveNext)>::Invoke;
-        customMethod_MoveNext._name = OBFUSCATE_BNM("MoveNext");
-        customMethod_MoveNext._returnType = BNM::GetType<bool>();
+        customMethod_MoveNext._name = BNM_OBFUSCATE_TMP("MoveNext");
+        customMethod_MoveNext._returnType = BNM::Defaults::Get<bool>();
         customMethod_MoveNext._isStatic = false;
         customMethod_MoveNext._parameterTypes = {};
         customClass._methods.push_back(&customMethod_MoveNext);
@@ -113,8 +113,8 @@ void BNM::Internal::SetupCoroutine() {
         constexpr auto p = &CustomWait::Reset;
         customMethod_Reset._address = *(void **) &p;
         customMethod_Reset._invoker = (void *) &BNM::MANAGEMENT_STRUCTURES::GetMethodInvoker<false, decltype(&CustomWait::Reset)>::Invoke;
-        customMethod_Reset._name = OBFUSCATE_BNM("Reset");
-        customMethod_Reset._returnType = BNM::GetType<void>();
+        customMethod_Reset._name = BNM_OBFUSCATE_TMP("Reset");
+        customMethod_Reset._returnType = BNM::Defaults::Get<void>();
         customMethod_Reset._isStatic = false;
         customMethod_Reset._parameterTypes = {};
         customClass._methods.push_back(&customMethod_Reset);
@@ -122,23 +122,26 @@ void BNM::Internal::SetupCoroutine() {
     {
         constexpr auto p = &CustomWait::Current;
         customMethod_Current._address = *(void **) &p;
-        customMethod_Current._invoker = (void *) &BNM::MANAGEMENT_STRUCTURES::GetMethodInvoker<false, decltype(&CustomWait::Current)>::Invoke;
-        customMethod_Current._name = OBFUSCATE_BNM("get_Current");
-        customMethod_Current._returnType = BNM::GetType<BNM::IL2CPP::Il2CppObject *>();
+        customMethod_Current._invoker = (void *) &BNM::MANAGEMENT_STRUCTURES::GetMethodInvoker<true, decltype(&CustomWait::Current)>::Invoke;
+        customMethod_Current._name = BNM_OBFUSCATE_TMP("get_Current");
+        customMethod_Current._returnType = BNM::Defaults::Get<BNM::IL2CPP::Il2CppObject *>();
+        customMethod_Current._isStatic = false;
+        customMethod_Current._parameterTypes = {};
         customClass._methods.push_back(&customMethod_Current);
     }
 }
+
 void BNM::Internal::LoadCoroutine() {
     using namespace Classes;
 
-    auto image = BNM::Image(OBFUSCATE_BNM("UnityEngine.CoreModule.dll"));
-    auto _namespace = OBFUSCATE_BNM("UnityEngine");
+    auto image = BNM::Image(BNM_OBFUSCATE_TMP("UnityEngine.CoreModule.dll"));
+    auto _namespace = BNM_OBFUSCATE_TMP("UnityEngine");
 
-    AsyncOperation = BNM::Class(_namespace, OBFUSCATE_BNM("AsyncOperation"), image);
-    WaitForEndOfFrame = BNM::Class(_namespace, OBFUSCATE_BNM("WaitForEndOfFrame"), image);
-    WaitForFixedUpdate = BNM::Class(_namespace, OBFUSCATE_BNM("WaitForFixedUpdate"),image);
-    WaitForSeconds = BNM::Class(_namespace, OBFUSCATE_BNM("WaitForSeconds"), image);
-    WaitForSecondsRealtime = BNM::Class(_namespace, OBFUSCATE_BNM("WaitForSecondsRealtime"), image);
+    AsyncOperation = BNM::Class(_namespace, BNM_OBFUSCATE_TMP("AsyncOperation"), image);
+    WaitForEndOfFrame = BNM::Class(_namespace, BNM_OBFUSCATE_TMP("WaitForEndOfFrame"), image);
+    WaitForFixedUpdate = BNM::Class(_namespace, BNM_OBFUSCATE_TMP("WaitForFixedUpdate"),image);
+    WaitForSeconds = BNM::Class(_namespace, BNM_OBFUSCATE_TMP("WaitForSeconds"), image);
+    WaitForSecondsRealtime = BNM::Class(_namespace, BNM_OBFUSCATE_TMP("WaitForSecondsRealtime"), image);
 }
 
 void BNM::Coroutine::IEnumerator::Finalize() {
@@ -171,7 +174,6 @@ BNM::Coroutine::IEnumerator *BNM::Coroutine::IEnumerator::get() {
 void BNM::Coroutine::IEnumerator::Reset() {}
 BNM::IL2CPP::Il2CppObject *BNM::Coroutine::IEnumerator::Current() { return _current; }
 
-
 BNM::Coroutine::AsyncOperation::AsyncOperation(intptr_t operation) { _object = Classes::AsyncOperation.CreateNewObjectParameters(operation); }
 BNM::Coroutine::WaitForEndOfFrame::WaitForEndOfFrame() { _object = Classes::WaitForEndOfFrame.CreateNewInstance(); }
 BNM::Coroutine::WaitForFixedUpdate::WaitForFixedUpdate() { _object = Classes::WaitForFixedUpdate.CreateNewInstance(); }
@@ -188,5 +190,4 @@ BNM::Coroutine::WaitWhile::WaitWhile(const std::function<bool()> &function) {
     obj->_func = function; obj->_isUntil = false; _object = obj;
 }
 
-#endif
 #endif

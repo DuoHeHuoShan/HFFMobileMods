@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.8...3.26)
 
+
 project(BNM)
 # Dobby Hook
 add_library(DOBBY_LIB STATIC IMPORTED)
@@ -7,9 +8,6 @@ set_target_properties(DOBBY_LIB PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}
 
 # Build BNM examples
 set(BNM_BUILD_EXAMPLES OFF)
-
-# Add dependents to liblog.so
-set(BNM_LINK_LOG ON)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -24,7 +22,7 @@ set(INCLUDE_DIRS
     external/include
     external
     external/utf8
-    src/BNM_data
+    src/private
     ../Dobby/include
 )
 
@@ -34,6 +32,7 @@ add_library(
         src/Class.cpp
         src/ClassesManagement.cpp
         src/Coroutine.cpp
+        src/Defaults.cpp
         src/Delegates.cpp
         src/EventBase.cpp
         src/Exceptions.cpp
@@ -55,14 +54,13 @@ target_include_directories(
         ${INCLUDE_DIRS}
 )
 
-if (${BNM_LINK_LOG})
-    target_link_libraries(
-            BNM
-            PUBLIC
-            DOBBY_LIB
-            log
-    )
-endif ()
+
+target_link_libraries(
+        BNM
+        PUBLIC
+        DOBBY_LIB
+        log
+)
 
 
 set_property(TARGET BNM PROPERTY BNM_INCLUDE_DIRECTORIES ${PUBLIC_INCLUDE_DIRS})

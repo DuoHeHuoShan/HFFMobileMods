@@ -1,6 +1,6 @@
 #include <BNM/FieldBase.hpp>
 #include <BNM/DebugMessages.hpp>
-#include "Internals.hpp"
+#include <Internals.hpp>
 
 using namespace BNM;
 
@@ -11,8 +11,8 @@ namespace BNM::PRIVATE_FieldUtils {
     void SetStaticValue(IL2CPP::FieldInfo *info, void *value) { return Internal::il2cppMethods.il2cpp_field_static_set_value(info, value); }
 }
 
-bool CheckIsFieldStatic(IL2CPP::FieldInfo *field) {
-    if (!field || !field->type) return false;
+static bool CheckIsFieldStatic(IL2CPP::FieldInfo *field) {
+    if (!field->type) return false;
     return (field->type->attrs & 0x0010) != 0 && field->offset != -1 && (field->type->attrs & 0x0040) == 0;
 }
 

@@ -1,20 +1,11 @@
 #include <BNM/Image.hpp>
 #include <BNM/Class.hpp>
-#include "Internals.hpp"
-
+#include <Internals.hpp>
 
 BNM::Image::Image(const std::string_view &name) {
-    auto &assemblies = *Internal::Assembly$$GetAllAssemblies();
+    _data = Internal::TryGetImage(name);
 
-    for (auto assembly : assemblies) {
-        auto currentImage = Internal::il2cppMethods.il2cpp_assembly_get_image(assembly);
-        if (!Internal::CompareImageName(currentImage, name)) continue;
-        _data = currentImage;
-        return;
-    }
-
-    BNM_LOG_WARN(DBG_BNM_MSG_Image_Constructor_NotFound, name.data());
-    _data = nullptr;
+    BNM_LOG_WARN_IF(!_data, DBG_BNM_MSG_Image_Constructor_NotFound, name.data());
 }
 
 BNM::Image::Image(const BNM::IL2CPP::Il2CppAssembly *assembly) {
@@ -32,7 +23,7 @@ std::vector<BNM::Class> BNM::Image::GetClasses(bool includeInner) const {
 
         for (size_t i = 0; i < typeCount; ++i) {
             auto cls = Internal::il2cppMethods.il2cpp_image_get_class(_data, i);
-            if (strcmp(OBFUSCATE_BNM("<Module>"), cls->name) == 0 || !includeInner && cls->declaringType) continue;
+            if (strcmp(BNM_OBFUSCATE("<Module>"), cls->name) == 0 || !includeInner && cls->declaringType) continue;
             classes.push_back(cls);
         }
 
@@ -57,7 +48,7 @@ std::vector<BNM::Class> BNM::Image::GetClasses(bool includeInner) const {
     NEW_CLASSES:
 
 #ifdef BNM_CLASSES_MANAGEMENT
-    Internal::ClassesManagement::BNMClassesMap.ForEachByImage(_data, [&classes, includeInner](IL2CPP::Il2CppClass *BNMClass) -> bool {
+    Internal::ClassesManagement::bnmClassesMap.ForEachByImage(_data, [&classes, includeInner](IL2CPP::Il2CppClass *BNMClass) -> bool {
         if (!includeInner && BNMClass->declaringType) return false;
 
         classes.push_back(BNMClass);

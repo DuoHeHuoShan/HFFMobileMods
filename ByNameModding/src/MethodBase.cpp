@@ -1,9 +1,8 @@
 #include <BNM/MethodBase.hpp>
 #include <BNM/DebugMessages.hpp>
-#include "Internals.hpp"
+#include <Internals.hpp>
 
 using namespace BNM;
-
 
 MethodBase::MethodBase(const IL2CPP::MethodInfo *info)  {
     _init = (BNM::CheckObj(info) != nullptr);

@@ -9,13 +9,14 @@ INCLUDE_DIRS := $(BNM_LOCAL_PATH)/include \
                 $(BNM_LOCAL_PATH)/external/include \
                 $(BNM_LOCAL_PATH)/external \
                 $(BNM_LOCAL_PATH)/external/utf8 \
-                $(BNM_LOCAL_PATH)/src/BNM_data
+                $(BNM_LOCAL_PATH)/src/private
 
 LOCAL_SRC_FILES := \
     $(BNM_LOCAL_PATH)/src/Class.cpp \
     $(BNM_LOCAL_PATH)/src/ClassesManagement.cpp \
     $(BNM_LOCAL_PATH)/src/Coroutine.cpp \
     $(BNM_LOCAL_PATH)/src/Delegates.cpp \
+    $(BNM_LOCAL_PATH)/src/Defaults.cpp \
     $(BNM_LOCAL_PATH)/src/EventBase.cpp \
     $(BNM_LOCAL_PATH)/src/Exceptions.cpp \
     $(BNM_LOCAL_PATH)/src/FieldBase.cpp \

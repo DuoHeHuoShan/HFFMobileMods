@@ -11,7 +11,7 @@
 
 struct HFFTimer : BNM::UnityEngine::MonoBehaviour {
     BNM_CustomClass(HFFTimer, BNM::CompileTimeClassBuilder(nullptr, "HFFTimer").Build(),
-                    BNM::CompileTimeClassBuilder(OBFUSCATE_BNM("UnityEngine"), OBFUSCATE_BNM("MonoBehaviour"), OBFUSCATE_BNM("UnityEngine.CoreModule")).Build(),
+                    BNM::CompileTimeClassBuilder("UnityEngine", "MonoBehaviour", "UnityEngine.CoreModule").Build(),
                     {});
     void OnGUI() {
         using namespace BNMGUI;
@@ -19,7 +19,7 @@ struct HFFTimer : BNM::UnityEngine::MonoBehaviour {
         BNM_CallCustomMethodOrigin(OnGUI, this);
         GUI::Label(Rect(0, 0, 20000, 20000), "OnGUI() called!");
     }
-    BNM_CustomMethod(OnGUI, false, BNM::GetType<void>(), "OnGUI");
+    BNM_CustomMethod(OnGUI, false, BNM::Defaults::Get<void>(), "OnGUI");
     BNM_CustomMethodSkipTypeMatch(OnGUI);
     BNM_CustomMethodMarkAsInvokeHook(OnGUI);
 };
