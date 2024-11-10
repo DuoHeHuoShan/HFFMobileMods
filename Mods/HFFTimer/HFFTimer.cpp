@@ -23,6 +23,7 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
     static HFFTimer *instance;
     bool timerWindowOpened = false;
     bool enableTimer = false;
+    bool timeOnPause = true;
     bool enableRestart = false;
     int restartLevel = 0;
 
@@ -50,23 +51,27 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
         int hours = int(time) / 3600;
         int minutes = int(time) % 3600 / 60;
         int seconds = int(time) % 60;
-        int ms = int(fmod(time, 1.0) * 1000);
+        int ms = int(fmod(time, 1.0) * 100);
         std::stringstream stringStream;
         stringStream << std::setfill('0');
-        if(minutes == 0) stringStream << seconds << '.' << std::setw(3) << ms;
-        else if(hours == 0) stringStream << minutes << ':' << std::setw(2) << seconds << '.' << std::setw(3) << ms;
-        else stringStream << hours << ':' << std::setw(2) << minutes << ':' << std::setw(2) << seconds << '.' << std::setw(3) << ms;
+        if(minutes == 0) stringStream << seconds << '.' << std::setw(2) << ms;
+        else if(hours == 0) stringStream << minutes << ':' << std::setw(2) << seconds << '.' << std::setw(2) << ms;
+        else stringStream << hours << ':' << std::setw(2) << minutes << ':' << std::setw(2) << seconds << '.' << std::setw(2) << ms;
         return stringStream.str();
     }
 
     std::string GetTimeText() {
         std::stringstream stringStream;
-        stringStream << "游戏时间: " << FormatTime(gameTime) << std::endl;
-        stringStream << "现实时间: " << FormatTime(UnityEngine::Time::realtimeSinceStartup - startRealTime) << std::endl;
-        stringStream << "上次游戏时间: " << FormatTime(prevGameTime) << std::endl;
-        stringStream << "上次现实时间: " << FormatTime(prevRealTime - startRealTime) << std::endl;
-        stringStream << "上关游戏时间: " << FormatTime(prevLevelGameTime) << std::endl;
-        stringStream << "上关现实时间: " << FormatTime(prevLevelRealTime) << std::endl;
+//        stringStream << "游戏时间: " << FormatTime(gameTime) << std::endl;
+//        stringStream << "现实时间: " << FormatTime(UnityEngine::Time::realtimeSinceStartup - startRealTime) << std::endl;
+//        stringStream << "上次游戏时间: " << FormatTime(prevGameTime) << std::endl;
+//        stringStream << "上次现实时间: " << FormatTime(prevRealTime - startRealTime) << std::endl;
+//        stringStream << "上关游戏时间: " << FormatTime(prevLevelGameTime) << std::endl;
+//        stringStream << "上关现实时间: " << FormatTime(prevLevelRealTime) << std::endl;
+        stringStream << "总时间: " << FormatTime(gameTime) << std::endl;
+        stringStream << "单关: " << FormatTime(gameTime - prevGameTime) << std::endl;
+        stringStream << "上关总时间: " << FormatTime(prevGameTime) << std::endl;
+        stringStream << "上次: " << FormatTime(prevLevelGameTime) << std::endl;
         return stringStream.str();
     }
 
@@ -90,10 +95,11 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
         if(ShouldToggleMenu()) timerWindowOpened = !timerWindowOpened;
         if(!Game::instance.Get()->Alive()) return;
         if(Game::state[Game::instance] == GameState::PlayingLevel)
-            gameTime += UnityEngine::Time::deltaTime;
-        if(Game::state[Game::instance] == GameState::Paused)
-            gameTime += UnityEngine::Time::unscaledDeltaTime;
+            gameTime += Time::deltaTime;
+        if(timeOnPause && Game::state[Game::instance] == GameState::Paused)
+            gameTime += Time::unscaledDeltaTime;
         if(prevGameState == GameState::PlayingLevel && Game::state[Game::instance] == GameState::LoadingLevel) {
+            gameTime += Time::deltaTime; // 增加通关到前一帧的时间
             prevLevelGameTime = gameTime - prevGameTime;
             prevLevelRealTime = Time::realtimeSinceStartup - prevRealTime;
             prevGameTime = gameTime;
@@ -115,11 +121,25 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
         ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2, io.DisplaySize.y / 2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
         ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_Once);
         if(ImGui::Begin("HFF手游计时器v0.0.2")) {
-            ImGui::Checkbox("启用计时器", &enableTimer);
-            ImGui::Checkbox("启用重开", &enableRestart);
-            ImGui::InputInt("重开关卡", &restartLevel);
-            if(ImGui::Button("设为当前关卡")) {
-                restartLevel = Game::currentLevelNumber[Game::instance];
+            if(ImGui::BeginTabBar("TimerTabBar")) {
+                if(ImGui::BeginTabItem("计时")) {
+                    ImGui::Checkbox("启用计时器", &enableTimer);
+                    ImGui::Checkbox("暂停时计时", &timeOnPause);
+                    ImGui::EndTabItem();
+                }
+                if(ImGui::BeginTabItem("速通")) {
+                    ImGui::Checkbox("启用重开", &enableRestart);
+                    ImGui::InputInt("重开关卡", &restartLevel);
+                    if(ImGui::Button("设为当前关卡")) {
+                        restartLevel = Game::currentLevelNumber[Game::instance];
+                    }
+                    ImGui::EndTabItem();
+                }
+                if(ImGui::BeginTabItem("定制")) {
+                    ImGui::ColorPicker4("计时器颜色", (float *) &timerColor, ImGuiColorEditFlags_AlphaBar);
+                    ImGui::EndTabItem();
+                }
+                ImGui::EndTabBar();
             }
         }
         ImGui::End();

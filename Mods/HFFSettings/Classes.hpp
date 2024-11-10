@@ -54,7 +54,14 @@ BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(MobileControlScale, "", MobileControlScale)
     BNMU_DefineMethod(BNM::MethodBase, Start, -1)
+    BNMU_DefineMethod(BNM::MethodBase, ScaleControls, -1)
     BNMU_DefineField(BNM::Field<BNM::UnityEngine::Object *>, TouchStick)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(MobileControlSchemeManager, "", MobileControlSchemeManager)
+    BNMU_DefineMethod(BNM::MethodBase, get_OverridesBodyPitchControls, -1)
+    BNMU_DefineProperty(BNM::Property<float>, LeftArmExtendValue)
+    BNMU_DefineProperty(BNM::Property<float>, RightArmExtendValue)
 BNMU_EndDefineClass()
 
 enum SnapAngles {

@@ -18,11 +18,12 @@ float lookVScale = 5;
 bool visibleBall = false;
 bool localSave = false;
 bool disableShadows = false;
-bool joystickFix = false;
+bool pseudoPC = false;
 int cameraFov = 5;
 int cameraSmoothing = 10;
 int advancedVideoClouds = 2;
 int targetFrameRate = -1;
+bool biggerButton = false;
 
 void (*old_ReadInput)(BNM::UnityEngine::Object *, void *);
 void new_ReadInput(BNM::UnityEngine::Object *thiz, void *outInputState) {
@@ -52,6 +53,14 @@ void new_MobileControlScale_Start(BNM::UnityEngine::Object *thiz) {
     if(touchStick) InControl::TouchStickControl::snapAngles[touchStick] = SnapAngles::Eight;
 }
 
+bool (*old_OverridesBodyPitchControls)(BNM::UnityEngine::Object *);
+bool new_OverridesBodyPitchControls(BNM::UnityEngine::Object *thiz) {
+    if(!pseudoPC) return old_OverridesBodyPitchControls(thiz);
+    return MobileControlSchemeManager::LeftArmExtendValue[thiz] != 0 || MobileControlSchemeManager::RightArmExtendValue[thiz] != 0;
+}
+
+void new_ScaleControls(BNM::UnityEngine::Object *thiz) {}
+
 void (*old_Options_Load)();
 void new_Options_Load() {
     Options::set_cameraFov(cameraFov);
@@ -80,11 +89,14 @@ void OnLoaded() {
     if(localSave) ApplyLocalSave();
     InvokeHook(Ball::OnEnable, new_Ball_OnEnable, old_Ball_OnEnable);
     HOOK(HumanControls::ReadInput, new_ReadInput, old_ReadInput);
-    if(joystickFix) {
+    if(pseudoPC) {
         InvokeHook(MobileControlScale::Start, new_MobileControlScale_Start, old_MobileControlScale_Start);
         HOOK(HumanControls::get_calc_joyWalk, new_HumanControls_get_calc_joyWalk,
              old_HumanControls_get_calc_joyWalk);
+        HOOK(MobileControlSchemeManager::get_OverridesBodyPitchControls, new_OverridesBodyPitchControls,
+             old_OverridesBodyPitchControls);
     }
+    if(biggerButton) HOOK(MobileControlScale::ScaleControls, &new_ScaleControls, nullptr);
     HOOK(Options::Load, new_Options_Load, old_Options_Load);
 }
 
@@ -108,11 +120,12 @@ void UseDefaultSettings() {
     HFFSettings["visibleBall"] = "false";
     HFFSettings["localSave"] = "false";
     HFFSettings["disableShadows"] = "false";
-    HFFSettings["joystickFix"] = "false";
+    HFFSettings["pseudoPC"] = "false";
     HFFSettings["cameraFov"] = "5";
     HFFSettings["cameraSmoothing"] = "10";
     HFFSettings["advancedVideoClouds"] = "2";
     HFFSettings["targetFrameRate"] = "-1";
+    HFFSettings["biggerButton"] = "false";
 }
 
 void ReadSettings() {
@@ -154,11 +167,12 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
     visibleBall = stob(HFFSettings["visibleBall"]);
     localSave = stob(HFFSettings["localSave"]);
     disableShadows = stob(HFFSettings["disableShadows"]);
-    joystickFix = stob(HFFSettings["joystickFix"]);
+    pseudoPC = stob(HFFSettings["pseudoPC"]);
     cameraFov = std::stoi(HFFSettings["cameraFov"]);
     cameraSmoothing = std::stoi(HFFSettings["cameraSmoothing"]);
     advancedVideoClouds = std::stoi(HFFSettings["advancedVideoClouds"]);
     targetFrameRate = std::stoi(HFFSettings["targetFrameRate"]);
+    biggerButton = stob(HFFSettings["biggerButton"]);
 
     return JNI_VERSION_1_6;
 }
