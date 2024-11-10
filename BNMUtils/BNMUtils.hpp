@@ -13,6 +13,12 @@ BNMU_BeginDefineClass(ExampleNamespace::ExampleClass, ExampleNamespace, ExampleC
 BNMU_EndDefineClass()
 */
 
+namespace BNMUtils {
+    BNM::DelegateBase *BuildDelegate(BNM::Class delegateType, const BNM::IL2CPP::Il2CppObject *target, const BNM::IL2CPP::MethodInfo *method) {
+        BNM::DelegateBase *delegate = (BNM::DelegateBase *) delegateType.CreateNewObjectParameters(target, method);
+        return delegate;
+    }
+}
 
 #define BNMU_BeginDefineClass(classname, namezpace, name) namespace classname { \
     static BNMUClassDefinition classDefinition(namezpace, #name); \
@@ -32,22 +38,27 @@ static BNMUPropertyDefinition _##propertyName(classDefinition, propertyName, #pr
 #define BNMU_EndDefineClass() };
 
 class BNMUFieldDefinition;
+
 class BNMUMethodDefinition;
+
 class BNMUPropertyDefinition;
+
 class BNMUClassDefinition {
 public:
     static std::vector<BNMUClassDefinition *> classDefinitions;
     std::vector<BNMUFieldDefinition> fieldDefinitions;
-    std::vector<BNMUMethodDefinition> methodDefinitions;
+    std::vector<BNMUMethodDefinition *> methodDefinitions;
     std::vector<BNMUPropertyDefinition> propertyDefinitions;
     std::string_view namezpace;
     std::string_view name;
     BNM::Class clazz;
 
-    BNMUClassDefinition(std::string_view namezpace, std::string_view name) : namezpace(namezpace), name(name) {
+    BNMUClassDefinition(std::string_view namezpace, std::string_view name) : namezpace(namezpace),
+                                                                             name(name) {
         classDefinitions.emplace_back(this);
     }
 };
+
 std::vector<BNMUClassDefinition *> BNMUClassDefinition::classDefinitions = std::vector<BNMUClassDefinition *>();
 
 class BNMUFieldDefinition {
@@ -55,7 +66,10 @@ public:
     std::string_view fieldName;
     BNM::FieldBase &field;
     BNMUClassDefinition &classDefinition;
-    BNMUFieldDefinition(BNMUClassDefinition &classDefinition, BNM::FieldBase &field, std::string_view fieldName) : field(field), fieldName(fieldName), classDefinition(classDefinition) {
+
+    BNMUFieldDefinition(BNMUClassDefinition &classDefinition, BNM::FieldBase &field,
+                        std::string_view fieldName) : field(field), fieldName(fieldName),
+                                                      classDefinition(classDefinition) {
         classDefinition.fieldDefinitions.emplace_back(*this);
     }
 };
@@ -70,22 +84,32 @@ public:
         ByParametersName,
         ByParametersType
     } findType;
-    union {
-        int parameters = -1;
-        std::initializer_list<std::string_view> parametersName;
-        std::initializer_list<BNM::CompileTimeClass> parametersType;
-    };
-    BNMUMethodDefinition(BNMUClassDefinition &classDefinition, BNM::MethodBase &method, std::string_view methodName, int parameters = -1) : classDefinition(classDefinition), method(method), methodName(methodName), parameters(parameters) {
+    int parameters = -1;
+    std::vector<std::string_view> parametersName;
+    std::vector<BNM::CompileTimeClass> parametersType;
+
+    BNMUMethodDefinition(BNMUClassDefinition &classDefinition, BNM::MethodBase &method,
+                         std::string_view methodName, int parameters = -1) : classDefinition(
+            classDefinition), method(method), methodName(methodName), parameters(parameters) {
         findType = FindType::ByParametersCount;
-        classDefinition.methodDefinitions.emplace_back(*this);
+        classDefinition.methodDefinitions.emplace_back(this);
     }
-    BNMUMethodDefinition(BNMUClassDefinition &classDefinition, BNM::MethodBase &method, std::string_view methodName, std::initializer_list<std::string_view> parametersName) : classDefinition(classDefinition), method(method), methodName(methodName), parametersName(parametersName) {
+
+    BNMUMethodDefinition(BNMUClassDefinition &classDefinition, BNM::MethodBase &method,
+                         std::string_view methodName,
+                         std::initializer_list<std::string_view> parametersName) : classDefinition(
+            classDefinition), method(method), methodName(methodName), parametersName(parametersName) {
         findType = FindType::ByParametersName;
-        classDefinition.methodDefinitions.emplace_back(*this);
+        classDefinition.methodDefinitions.emplace_back(this);
     }
-    BNMUMethodDefinition(BNMUClassDefinition &classDefinition, BNM::MethodBase &method, std::string_view methodName, std::initializer_list<BNM::CompileTimeClass> parametersType) : classDefinition(classDefinition), method(method), methodName(methodName), parametersType(parametersType) {
+
+    BNMUMethodDefinition(BNMUClassDefinition &classDefinition, BNM::MethodBase &method,
+                         std::string_view methodName,
+                         std::initializer_list<BNM::CompileTimeClass> parametersType)
+            : classDefinition(classDefinition), method(method), methodName(methodName),
+              parametersType(parametersType) {
         findType = FindType::ByParametersType;
-        classDefinition.methodDefinitions.emplace_back(*this);
+        classDefinition.methodDefinitions.emplace_back(this);
     }
 };
 
@@ -94,35 +118,43 @@ public:
     std::string_view propertyName;
     BNM::PropertyBase &property;
     BNMUClassDefinition &classDefinition;
-    BNMUPropertyDefinition(BNMUClassDefinition &classDefinition, BNM::PropertyBase &property, std::string_view propertyName) : property(property), propertyName(propertyName), classDefinition(classDefinition) {
+
+    BNMUPropertyDefinition(BNMUClassDefinition &classDefinition, BNM::PropertyBase &property,
+                           std::string_view propertyName) : property(property),
+                                                            propertyName(propertyName),
+                                                            classDefinition(classDefinition) {
         classDefinition.propertyDefinitions.emplace_back(*this);
     }
 };
 
 void BNMU_OnLoaded() {
     static bool hasInited = false;
-    if(hasInited) return;
+    if (hasInited) return;
     hasInited = true;
-    for(BNMUClassDefinition *classDefinition : BNMUClassDefinition::classDefinitions) {
+    for (BNMUClassDefinition *classDefinition: BNMUClassDefinition::classDefinitions) {
         classDefinition->clazz = BNM::Class(classDefinition->namezpace, classDefinition->name);
-        for(BNMUFieldDefinition &fieldDefinition : classDefinition->fieldDefinitions) {
+        for (BNMUFieldDefinition &fieldDefinition: classDefinition->fieldDefinitions) {
             fieldDefinition.field = classDefinition->clazz.GetField(fieldDefinition.fieldName);
         }
-        for(BNMUMethodDefinition &methodDefinition : classDefinition->methodDefinitions) {
-            switch (methodDefinition.findType) {
+        for (BNMUMethodDefinition *methodDefinition: classDefinition->methodDefinitions) {
+            switch (methodDefinition->findType) {
                 case BNMUMethodDefinition::FindType::ByParametersCount:
-                    methodDefinition.method = classDefinition->clazz.GetMethod(methodDefinition.methodName, methodDefinition.parameters);
+                    methodDefinition->method = classDefinition->clazz.GetMethod(
+                            methodDefinition->methodName, methodDefinition->parameters);
                     break;
                 case BNMUMethodDefinition::FindType::ByParametersName:
-                    methodDefinition.method = classDefinition->clazz.GetMethod(methodDefinition.methodName, methodDefinition.parametersName);
+                    methodDefinition->method = classDefinition->clazz.GetMethod(
+                            methodDefinition->methodName, methodDefinition->parametersName);
                     break;
                 case BNMUMethodDefinition::FindType::ByParametersType:
-                    methodDefinition.method = classDefinition->clazz.GetMethod(methodDefinition.methodName, methodDefinition.parametersType);
+                    methodDefinition->method = classDefinition->clazz.GetMethod(
+                            methodDefinition->methodName, methodDefinition->parametersType);
                     break;
             }
         }
-        for(BNMUPropertyDefinition &propertyDefinition : classDefinition->propertyDefinitions) {
-            propertyDefinition.property = classDefinition->clazz.GetProperty(propertyDefinition.propertyName);
+        for (BNMUPropertyDefinition &propertyDefinition: classDefinition->propertyDefinitions) {
+            propertyDefinition.property = classDefinition->clazz.GetProperty(
+                    propertyDefinition.propertyName);
         }
     }
 }

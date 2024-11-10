@@ -14,8 +14,8 @@ namespace std {
     template<typename T>
     using coroutine_handle = std::experimental::coroutine_handle<T>;
     using suspend_always = std::experimental::suspend_always;
-    template <typename Ret, typename... Args>
-    using coroutine_traits = std::experimental::coroutine_traits<Ret, Args...>;
+//    template <typename Ret, typename... Args>
+//    using coroutine_traits = std::experimental::coroutine_traits<Ret, Args...>;
 }
 #endif
 

@@ -36,6 +36,8 @@ namespace BNM {
         [[nodiscard]] BNM::MethodBase GetMethod(const std::string_view &name, int parameters = -1) const;
         [[nodiscard]] BNM::MethodBase GetMethod(const std::string_view &name, const std::initializer_list<std::string_view> &parametersName) const;
         [[nodiscard]] BNM::MethodBase GetMethod(const std::string_view &name, const std::initializer_list<BNM::CompileTimeClass> &parametersType) const;
+        [[nodiscard]] BNM::MethodBase GetMethod(const std::string_view &name, const std::vector<std::string_view> &parametersName) const;
+        [[nodiscard]] BNM::MethodBase GetMethod(const std::string_view &name, const std::vector<BNM::CompileTimeClass> &parametersType) const;
         [[nodiscard]] BNM::PropertyBase GetProperty(const std::string_view &name) const;
         [[nodiscard]] BNM::Class GetInnerClass(const std::string_view &name) const;
         [[nodiscard]] BNM::FieldBase GetField(const std::string_view &name) const;

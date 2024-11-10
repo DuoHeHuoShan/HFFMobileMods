@@ -196,6 +196,51 @@ MethodBase Class::GetMethod(const std::string_view &name, const std::initializer
     return {};
 }
 
+MethodBase Class::GetMethod(const std::string_view &name, const std::vector<std::string_view> &parametersName) const {
+    BNM_LOG_ERR_IF(!_data, DBG_BNM_MSG_Class_Dead_Error);
+    if (!_data) return {};
+    TryInit();
+
+    auto parameters = (uint8_t) parametersName.size();
+
+    auto method = Internal::IterateMethods(*this, [&name, &parameters, &parametersName](IL2CPP::MethodInfo *method) {
+        if (name != method->name || method->parameters_count != parameters) return false;
+        for (uint8_t i = 0; i < parameters; ++i) if (Internal::il2cppMethods.il2cpp_method_get_param_name(method, i) != parametersName.begin()[i]) return false;
+        return true;
+    });
+
+    if (method != nullptr) return method;
+
+    BNM_LOG_WARN(DBG_BNM_MSG_Class_GetMethod_Names_NotFound, _data->namespaze, _data->name, name.data(), parameters);
+    return {};
+}
+
+MethodBase Class::GetMethod(const std::string_view &name, const std::vector<BNM::CompileTimeClass> &parametersType) const {
+    BNM_LOG_ERR_IF(!_data, DBG_BNM_MSG_Class_Dead_Error);
+    if (!_data) return {};
+    TryInit();
+    auto parameters = (uint8_t) parametersType.size();
+
+    auto method = Internal::IterateMethods(*this, [&name, parameters, &parametersType](IL2CPP::MethodInfo *method) {
+        if (name != method->name || method->parameters_count != parameters) return false;
+        for (uint8_t i = 0; i < parameters; ++i) {
+#if UNITY_VER < 212
+            auto param = (method->parameters + i)->parameter_type;
+#else
+            auto param = method->parameters[i];
+#endif
+
+            if (Class(param).GetClass() != parametersType.begin()[i].ToIl2CppClass()) return false;
+        }
+        return true;
+    });
+
+    if (method != nullptr) return method;
+
+    BNM_LOG_WARN(DBG_BNM_MSG_Class_GetMethod_Types_NotFound, _data->namespaze, _data->name, name.data(), parameters);
+    return {};
+}
+
 PropertyBase Class::GetProperty(const std::string_view &name) const {
     BNM_LOG_ERR_IF(!_data, DBG_BNM_MSG_Class_Dead_Error);
     if (!_data) return {};
