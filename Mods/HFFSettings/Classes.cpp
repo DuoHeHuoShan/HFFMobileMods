@@ -1,10 +1,48 @@
-#pragma once
-
 #include <BNMUtils.hpp>
 #include <BNM/Property.hpp>
+#include <BNM/Method.hpp>
+#include <BNM/UnityStructures.hpp>
+#include <BNM/Field.hpp>
+
+namespace UnityEngine {
+    enum class TouchPhase
+    {
+        Began = 0,
+        Moved = 1,
+        Stationary = 2,
+        Ended = 3,
+        Canceled = 4
+    };
+    enum class TouchType
+    {
+        Direct,
+        Indirect,
+        Stylus
+    };
+    struct Touch {
+        int fingerId;
+        BNM::Structures::Unity::Vector2 position;
+        BNM::Structures::Unity::Vector2 rawPosition;
+        BNM::Structures::Unity::Vector2 positionDelta;
+        float timeDelta;
+        int tapCount;
+        TouchPhase phase;
+        TouchType type;
+        float pressure;
+        float maximumPossiblePressure;
+        float radius;
+        float radiusVariance;
+        float altitudeAngle;
+        float azimuthAngle;
+    };
+}
 
 BNMU_BeginDefineClass(UnityEngine::Application, "UnityEngine", Application)
     BNMU_DefineProperty(BNM::Property<int>, targetFrameRate)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(HFFResources, "", HFFResources)
+    BNMU_DefineMethod(BNM::MethodBase, Awake, -1)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(HumanControls, "", HumanControls)
@@ -19,15 +57,21 @@ BNMU_BeginDefineClass(Options, "", Options)
     BNMU_DefineMethod(BNM::Method<void>, set_advancedVideoClouds, -1)
     BNMU_DefineMethod(BNM::Method<void>, set_cameraFov, -1)
     BNMU_DefineMethod(BNM::Method<void>, set_cameraSmoothing, -1)
+    BNMU_DefineMethod(BNM::Method<void>, ApplyAdvancedVideo, -1)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(Ball, "", Ball)
     BNMU_DefineMethod(BNM::MethodBase, OnEnable, -1)
 BNMU_EndDefineClass()
 
+BNMU_BeginDefineClass(UnityEngine::Component, "UnityEngine", Component)
+    BNMU_DefineProperty(BNM::Property<BNM::UnityEngine::Object *>, gameObject)
+BNMU_EndDefineClass()
+
 BNMU_BeginDefineClass(UnityEngine::GameObject, "UnityEngine", GameObject)
     BNMU_DefineMethod(BNM::Method<BNM::UnityEngine::Object *>, Find, -1)
     BNMU_DefineMethod(BNM::Method<void>, SetActive, -1)
+    BNMU_DefineMethod(BNM::Method<void>, AddComponent, 1)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(Mobile::SaveGameSystem::PlayerPrefs, "Mobile.SaveGameSystem", PlayerPrefs)
@@ -73,4 +117,22 @@ enum SnapAngles {
 
 BNMU_BeginDefineClass(InControl::TouchStickControl, "InControl", TouchStickControl)
     BNMU_DefineField(BNM::Field<SnapAngles>, snapAngles)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(TriggerOnQuickSwipe, "", TriggerOnQuickSwipe)
+    BNMU_DefineMethod(BNM::MethodBase, GetTriggerState, -1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(UnityEngine::Screen, "UnityEngine", Screen)
+    BNMU_DefineProperty(BNM::Property<int>, width)
+    BNMU_DefineProperty(BNM::Property<int>, height)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(UnityEngine::Input, "UnityEngine", Input)
+    BNMU_DefineProperty(BNM::Property<int>, touchCount)
+    BNMU_DefineMethod(BNM::Method<UnityEngine::Touch>, GetTouch, 1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(UnityEngine::Time, "UnityEngine", Time)
+    BNMU_DefineProperty(BNM::Property<float>, unscaledDeltaTime)
 BNMU_EndDefineClass()

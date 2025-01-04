@@ -12,7 +12,15 @@
 #include <iomanip>
 #include <imgui_manager.hpp>
 #include <imgui.h>
-#include <imgui_demo.cpp>
+
+const char *modesStr[] = { "Any%",  "No CP%", "CP%" };
+enum class SpeedrunMode {
+    Any,
+    NoCheckPoint,
+    Checkpoint
+};
+
+BNM::Method<BNM::Structures::Mono::Array<void *> *> FindCheckpoints;
 
 static void RestartLevel(BNM::UnityEngine::Object *instance, bool reset = true);
 
@@ -23,18 +31,22 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
     static HFFTimer *instance;
     bool timerWindowOpened = false;
     bool enableTimer = false;
+    bool autoReset = true;
     bool timeOnPause = true;
     bool enableRestart = false;
     int restartLevel = 0;
+    SpeedrunMode mode = SpeedrunMode::Any;
+    std::string invalidText;
+    int cpMaxCount = 0;
+    int cpCount = 0;
 
     ImColor timerColor = ImColor(255, 0, 255);
     GameState prevGameState = GameState::Inactive;
+    AppState prevAppState = AppState::Startup;
     float gameTime = 0;
     float prevGameTime = 0;
-    float prevRealTime = 0;
-    float startRealTime = 0;
     float prevLevelGameTime = 0;
-    float prevLevelRealTime = 0;
+    float ssTime = 0;
 
     void Constructor() {
         BNM::UnityEngine::MonoBehaviour tmp = *this;
@@ -62,16 +74,18 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
 
     std::string GetTimeText() {
         std::stringstream stringStream;
-//        stringStream << "游戏时间: " << FormatTime(gameTime) << std::endl;
-//        stringStream << "现实时间: " << FormatTime(UnityEngine::Time::realtimeSinceStartup - startRealTime) << std::endl;
-//        stringStream << "上次游戏时间: " << FormatTime(prevGameTime) << std::endl;
-//        stringStream << "上次现实时间: " << FormatTime(prevRealTime - startRealTime) << std::endl;
-//        stringStream << "上关游戏时间: " << FormatTime(prevLevelGameTime) << std::endl;
-//        stringStream << "上关现实时间: " << FormatTime(prevLevelRealTime) << std::endl;
         stringStream << "总时间: " << FormatTime(gameTime) << std::endl;
-        stringStream << "单关: " << FormatTime(gameTime - prevGameTime) << std::endl;
+        stringStream << "单关: " << FormatTime(ssTime) << std::endl;
         stringStream << "上关总时间: " << FormatTime(prevGameTime) << std::endl;
         stringStream << "上次: " << FormatTime(prevLevelGameTime) << std::endl;
+        return stringStream.str();
+    }
+
+    std::string GetSpeedrunText() {
+        std::stringstream stringStream;
+        stringStream << "项目: " << modesStr[int(mode)] << std::endl;
+        if(mode == SpeedrunMode::Checkpoint)
+            stringStream << "存档: " << cpCount << "/" << cpMaxCount << std::endl;
         return stringStream.str();
     }
 
@@ -89,45 +103,81 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
         return false;
     }
 
+    void Reset() {
+        invalidText = "";
+        gameTime = HFFTimer::instance->prevGameTime = 0;
+    }
+
     void Update() {
         using namespace UnityEngine;
+        using namespace Multiplayer;
         BNM_CallCustomMethodOrigin(Update, this);
+        static int oldCpNumber = 0;
         if(ShouldToggleMenu()) timerWindowOpened = !timerWindowOpened;
         if(!Game::instance.Get()->Alive()) return;
-        if(Game::state[Game::instance] == GameState::PlayingLevel)
+        if(autoReset && ((prevAppState == AppState::PlayLevel && App::state == AppState::Menu) || (prevAppState == AppState::ServerLoadLobby && App::state == AppState::ServerLobby) || (prevAppState == AppState::ClientLoadLobby && App::state == AppState::ClientLobby))) Reset();
+        if(Game::state[Game::instance] == GameState::PlayingLevel) {
             gameTime += Time::deltaTime;
-        if(timeOnPause && Game::state[Game::instance] == GameState::Paused)
+            ssTime = gameTime - prevGameTime;
+        }
+        if(timeOnPause && Game::state[Game::instance] == GameState::Paused) {
             gameTime += Time::unscaledDeltaTime;
+            ssTime = gameTime - prevGameTime;
+        }
         if(prevGameState == GameState::PlayingLevel && Game::state[Game::instance] == GameState::LoadingLevel) {
             gameTime += Time::deltaTime; // 增加通关到前一帧的时间
             prevLevelGameTime = gameTime - prevGameTime;
-            prevLevelRealTime = Time::realtimeSinceStartup - prevRealTime;
             prevGameTime = gameTime;
-            prevRealTime = Time::realtimeSinceStartup;
+        }
+        if((prevGameState == GameState::LoadingLevel || prevGameState == GameState::Inactive) && Game::state[Game::instance] == GameState::PlayingLevel) {
+            oldCpNumber = 0;
+            cpCount = 0;
+            if(Game::currentLevelNumber[Game::instance] == 9) {
+                cpMaxCount = 15;
+            } else if(Game::currentLevelNumber[Game::instance] == 21) {
+                cpMaxCount = 10;
+            } else {
+                cpMaxCount = FindCheckpoints()->GetCapacity() - 1;
+            }
+        } else if(oldCpNumber != Game::currentCheckpointNumber[Game::instance]) {
+            if(mode == SpeedrunMode::NoCheckPoint) {
+                invalidText = "无效!";
+            }
+            cpCount++;
+            oldCpNumber = Game::currentCheckpointNumber[Game::instance];
         }
         prevGameState = Game::state[Game::instance];
+        prevAppState = App::state;
     }
 
     void OnGUI() {
         ImGuiIO &io = ImGui::GetIO();
         if(enableTimer) {
             ImGuiWindowFlags timer_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground;
-            ImGui::SetNextWindowPos(ImVec2(0, 0));
+            ImGui::SetNextWindowPos(ImVec2(10, 0));
             ImGui::Begin("TimerText", nullptr, timer_flags);
-            ImGui::TextColored(timerColor, GetTimeText().c_str());
+            ImGui::TextColored(timerColor, "%s", GetTimeText().c_str());
+            ImGui::End();
+
+            ImGui::SetNextWindowPos(ImVec2(200, 0));
+            ImGui::Begin("SpeedrunText", nullptr, timer_flags);
+            ImGui::TextColored(timerColor, "%s", GetSpeedrunText().c_str());
+            ImGui::TextColored(ImColor(255, 0, 0), "%s", invalidText.c_str());
             ImGui::End();
         }
         if(!timerWindowOpened) return;
         ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2, io.DisplaySize.y / 2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
         ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_Once);
-        if(ImGui::Begin("HFF手游计时器v0.0.2")) {
+        if(ImGui::Begin("HFF手游计时器v0.0.3")) {
             if(ImGui::BeginTabBar("TimerTabBar")) {
                 if(ImGui::BeginTabItem("计时")) {
                     ImGui::Checkbox("启用计时器", &enableTimer);
+                    ImGui::Checkbox("自动重置", &autoReset);
                     ImGui::Checkbox("暂停时计时", &timeOnPause);
                     ImGui::EndTabItem();
                 }
                 if(ImGui::BeginTabItem("速通")) {
+                    ImGui::Combo("项目", (int *) &mode, modesStr, IM_ARRAYSIZE(modesStr));
                     ImGui::Checkbox("启用重开", &enableRestart);
                     ImGui::InputInt("重开关卡", &restartLevel);
                     if(ImGui::Button("设为当前关卡")) {
@@ -154,16 +204,22 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
 HFFTimer *HFFTimer::instance;
 
 BNM::Coroutine::IEnumerator Restart() {
-    Game::state[Game::instance] = GameState::Paused;
-    co_yield BNM::Coroutine::WaitForFixedUpdate();
-    Multiplayer::App::PauseLeave[Multiplayer::App::instance](false);
-    co_yield BNM::Coroutine::WaitForFixedUpdate();
-    Multiplayer::App::LaunchSinglePlayer[Multiplayer::App::instance](HFFTimer::instance->restartLevel, 0, 0);
-    HFFTimer::instance->gameTime = HFFTimer::instance->prevGameTime = 0;
-    co_yield BNM::Coroutine::WaitUntil([]() -> bool {
-        return Game::state[Game::instance] == GameState::PlayingLevel;
-    });
-    HFFTimer::instance->startRealTime = HFFTimer::instance->prevRealTime = UnityEngine::Time::realtimeSinceStartup;
+    using namespace Multiplayer;
+    if(NetGame::isLocal) {
+        Game::state[Game::instance] = GameState::Paused;
+        co_yield BNM::Coroutine::WaitForFixedUpdate();
+        App::PauseLeave[App::instance](false);
+        co_yield BNM::Coroutine::WaitForFixedUpdate();
+        App::LaunchSinglePlayer[Multiplayer::App::instance](
+                (unsigned long long) HFFTimer::instance->restartLevel, 0, 0);
+        HFFTimer::instance->Reset();
+    } else if(NetGame::isServer) {
+        Game::state[Game::instance] = GameState::Paused;
+        co_yield BNM::Coroutine::WaitForFixedUpdate();
+        Game::state[Game::instance] = GameState::Inactive;
+        App::NextLevelServer[App::instance](HFFTimer::instance->restartLevel, 0);
+        HFFTimer::instance->Reset();
+    }
     co_return;
 }
 
@@ -184,7 +240,9 @@ void HFFResources$Awake(BNM::UnityEngine::Object *thiz) {
 }
 
 void OnLoaded() {
+    using namespace UnityEngine;
     using namespace BNM;
+    FindCheckpoints = Object::FindObjectsOfType.GetGeneric({HumanAPI::Checkpoint::clazz});
     HOOK(Game::RestartLevel, RestartLevel, old_RestartLevel);
     InvokeHook(HFFResources::Awake, HFFResources$Awake, _HFFResources$Awake);
 }

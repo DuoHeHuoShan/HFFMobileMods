@@ -11,10 +11,14 @@
 #include <string>
 #include <android/log.h>
 #include <filesystem>
+#include <mutex>
+#include <android/input.h>
 
 static std::vector<std::function<void()>> onGuiFunctions;
+static std::vector<std::function<void()>> onLoadedFunctions;
 static int screenWidth, screenHeight;
 static int screenWidthReal, screenHeightReal;
+std::mutex mtx;
 
 std::string GetWorkDir() {
     Dl_info dlInfo;
@@ -26,9 +30,21 @@ std::string GetWorkDir() {
 }
 
 static void (*old_InputMessage)(AInputEvent *, void *, void *);
-static void new_InputMessage(AInputEvent *thiz, void *arg1, void *arg2) {
-    old_InputMessage(thiz, arg1, arg2);
-    ImGui_ImplAndroid_HandleInputEvent(thiz);
+static void new_InputMessage(AInputEvent *input_event, void *arg1, void *arg2) {
+    old_InputMessage(input_event, arg1, arg2);
+    mtx.lock();
+    ImGui_ImplAndroid_HandleInputEvent(input_event);
+    mtx.unlock();
+}
+
+static int32_t (*old_consume)(void *thiz, void *, bool, long, uint32_t *, AInputEvent **);
+static int32_t new_consume(void *thiz, void *arg1, bool arg2, long arg3, uint32_t *arg4, AInputEvent **input_event) {
+    auto result = old_consume(thiz, arg1, arg2, arg3, arg4, input_event);
+    if(result != 0 || *input_event == nullptr) return result;
+    mtx.lock();
+    ImGui_ImplAndroid_HandleInputEvent(*input_event);
+    mtx.unlock();
+    return result;
 }
 
 static void TrySetupImgui() {
@@ -47,7 +63,16 @@ static void TrySetupImgui() {
     ImGui_ImplOpenGL3_Init();
     void *sym_input = DobbySymbolResolver(("/system/lib/libinput.so"), ("_ZN7android13InputConsumer21initializeMotionEventEPNS_11MotionEventEPKNS_12InputMessageE"));
     if (nullptr != sym_input) {
-        DobbyHook(sym_input,(void *) &new_InputMessage,(void **) &old_InputMessage);
+        DobbyHook(sym_input, (void *) &new_InputMessage, (void **) &old_InputMessage);
+    } else {
+        sym_input = DobbySymbolResolver(("/system/lib/libinput.so"), ("_ZN7android13InputConsumer7consumeEPNS_26InputEventFactoryInterfaceEblPjPPNS_10InputEventE"));
+        if(nullptr != sym_input) {
+            DobbyHook(sym_input, (void *) &new_consume, (void **) &old_consume);
+        }
+    }
+    ImGui::GetStyle().ScaleAllSizes(1.5f);
+    for(const auto &func : onLoadedFunctions) {
+        func();
     }
 }
 
@@ -55,10 +80,10 @@ static void DrawImGui() {
     if(onGuiFunctions.empty()) return;
     ImGuiIO &io = ImGui::GetIO();
     io.DisplaySize = ImVec2((float) screenWidth, (float) screenHeight);
-    ImGui::GetStyle() = ImGuiStyle();
-    ImGui::GetStyle().ScaleAllSizes(1.5f);
     ImGui_ImplOpenGL3_NewFrame();
+    mtx.lock();
     ImGui::NewFrame();
+    mtx.unlock();
     for(const auto &func : onGuiFunctions) {
         func();
     }
@@ -88,4 +113,8 @@ void ImGuiManager::TryInitImGui() {
 
 void ImGuiManager::AddOnGuiCallback(std::function<void()> func) {
     onGuiFunctions.emplace_back(func);
+}
+
+void ImGuiManager::AddOnLoadedCallback(std::function<void()> func) {
+    onLoadedFunctions.emplace_back(func);
 }

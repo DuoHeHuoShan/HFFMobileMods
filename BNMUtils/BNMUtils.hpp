@@ -13,27 +13,41 @@ BNMU_BeginDefineClass(ExampleNamespace::ExampleClass, ExampleNamespace, ExampleC
 BNMU_EndDefineClass()
 */
 
-namespace BNMUtils {
-    BNM::DelegateBase *BuildDelegate(BNM::Class delegateType, const BNM::IL2CPP::Il2CppObject *target, const BNM::IL2CPP::MethodInfo *method) {
-        BNM::DelegateBase *delegate = (BNM::DelegateBase *) delegateType.CreateNewObjectParameters(target, method);
-        return delegate;
-    }
-}
+#ifndef BNMU_EXTERN
 
 #define BNMU_BeginDefineClass(classname, namezpace, name) namespace classname { \
-    static BNMUClassDefinition classDefinition(namezpace, #name); \
+    BNMUClassDefinition classDefinition(namezpace, #name); \
+    const BNM::Class &clazz = classDefinition.clazz;
+#define BNMU_DefineField(type, fieldName) type fieldName; \
+BNMUFieldDefinition _##fieldName(classDefinition, fieldName, #fieldName);
 
-#define BNMU_DefineField(type, fieldName) static type fieldName; \
-static BNMUFieldDefinition _##fieldName(classDefinition, fieldName, #fieldName);
+#define BNMU_DefineMethod(type, methodName, ...) type methodName; \
+BNMUMethodDefinition _##methodName(classDefinition, methodName, #methodName, __VA_ARGS__);
 
-#define BNMU_DefineMethod(type, methodName, ...) static type methodName; \
-static BNMUMethodDefinition _##methodName(classDefinition, methodName, #methodName, __VA_ARGS__);
+#define BNMU_DefineMethodName(type, name, methodName, ...) type name; \
+BNMUMethodDefinition _##name(classDefinition, name, #methodName, __VA_ARGS__);
 
-#define BNMU_DefineMethodName(type, name, methodName, ...) static type name; \
-static BNMUMethodDefinition _##name(classDefinition, name, #methodName, __VA_ARGS__);
+#define BNMU_DefineProperty(type, propertyName) type propertyName; \
+BNMUPropertyDefinition _##propertyName(classDefinition, propertyName, #propertyName);
 
-#define BNMU_DefineProperty(type, propertyName) static type propertyName; \
-static BNMUPropertyDefinition _##propertyName(classDefinition, propertyName, #propertyName);
+#else
+
+#define BNMU_BeginDefineClass(classname, namezpace, name) namespace classname { \
+    extern BNMUClassDefinition classDefinition; \
+    extern const BNM::Class &clazz;
+#define BNMU_DefineField(type, fieldName) extern type fieldName; \
+extern BNMUFieldDefinition _##fieldName;
+
+#define BNMU_DefineMethod(type, methodName, ...) extern type methodName; \
+extern BNMUMethodDefinition _##methodName;
+
+#define BNMU_DefineMethodName(type, name, methodName, ...) extern type name; \
+extern BNMUMethodDefinition _##name;
+
+#define BNMU_DefineProperty(type, propertyName) extern type propertyName; \
+extern BNMUPropertyDefinition _##propertyName;
+
+#endif
 
 #define BNMU_EndDefineClass() };
 
@@ -59,7 +73,9 @@ public:
     }
 };
 
+#ifndef BNMU_EXTERN
 std::vector<BNMUClassDefinition *> BNMUClassDefinition::classDefinitions = std::vector<BNMUClassDefinition *>();
+#endif
 
 class BNMUFieldDefinition {
 public:
@@ -127,6 +143,9 @@ public:
     }
 };
 
+#ifdef BNMU_EXTERN
+extern void BNMU_OnLoaded();
+#else
 void BNMU_OnLoaded() {
     static bool hasInited = false;
     if (hasInited) return;
@@ -158,3 +177,4 @@ void BNMU_OnLoaded() {
         }
     }
 }
+#endif

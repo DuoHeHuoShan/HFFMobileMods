@@ -1,108 +1,57 @@
 #include <jni.h>
+#include <imgui_manager.hpp>
+#include <imgui.h>
 #include <BNM/Loading.hpp>
-#include "BNM/Class.hpp"
-#include "BNM/MethodBase.hpp"
-#include "BNM/Method.hpp"
-#include "BNM/Utils.hpp"
-#include "BNM/Field.hpp"
-#include "BNM/UnityStructures.hpp"
-#include "Classes.hpp"
-#include <map>
+#include <BNM/Class.hpp>
+#include <BNM/MethodBase.hpp>
+#include <BNM/Method.hpp>
+#include <BNM/Utils.hpp>
+#include <BNM/Field.hpp>
+#include <BNM/UnityStructures.hpp>
+#include <BNM/ClassesManagement.hpp>
+#include <Classes.hpp>
+#include <Settings.hpp>
+#include <mINI/ini.h>
 #include <string>
-#include <fstream>
 
-std::map<std::string, std::string> HFFSettings;
+using namespace mINI;
 
-float lookHScale = 12;
-float lookVScale = 5;
-bool visibleBall = false;
-bool localSave = false;
-bool disableShadows = false;
-bool pseudoPC = false;
-int cameraFov = 5;
-int cameraSmoothing = 10;
-int advancedVideoClouds = 2;
-int targetFrameRate = -1;
-bool biggerButton = false;
+INIFile *settingsFile;
+INIStructure settingsIni;
 
-void (*old_ReadInput)(BNM::UnityEngine::Object *, void *);
-void new_ReadInput(BNM::UnityEngine::Object *thiz, void *outInputState) {
-    HumanControls::lookHScale[thiz].Set(lookHScale);
-    HumanControls::lookVScale[thiz].Set(lookVScale);
-    old_ReadInput(thiz, outInputState);
-}
+struct HFFSettings : public BNM::UnityEngine::MonoBehaviour {
+    BNM_CustomClass(HFFSettings, BNM::CompileTimeClassBuilder("", "HFFSettings").Build(),
+            BNM::CompileTimeClassBuilder("UnityEngine", "MonoBehaviour", "UnityEngine.CoreModule").Build(),
+    {});
+    void Awake() {
+        BNM_CallCustomMethodOrigin(Awake, this);
+        SettingsManager::instance->OnAwake();
+    }
+    void Update() {
+        BNM_CallCustomMethodOrigin(Update, this);
+        SettingsManager::instance->OnUpdate();
+    }
+    BNM_CustomMethod(Awake, false, BNM::Defaults::Get<void>(), "Awake");
+    BNM_CustomMethodSkipTypeMatch(Awake);
+    BNM_CustomMethodMarkAsInvokeHook(Awake);
+    BNM_CustomMethod(Update, false, BNM::Defaults::Get<void>(), "Update");
+    BNM_CustomMethodSkipTypeMatch(Update);
+    BNM_CustomMethodMarkAsInvokeHook(Update);
+};
 
-void (*old_Ball_OnEnable)(BNM::UnityEngine::Object *);
-void new_Ball_OnEnable(BNM::UnityEngine::Object *thiz) {
-    old_Ball_OnEnable(thiz);
-    if(visibleBall) UnityEngine::GameObject::SetActive[UnityEngine::GameObject::Find(BNM::CreateMonoString("/Player(Clone)/Ball/Sphere"))](true);
-}
-
-BNM::Structures::Unity::Vector3 (*old_HumanControls_get_calc_joyWalk)(BNM::UnityEngine::Object *);
-BNM::Structures::Unity::Vector3 new_HumanControls_get_calc_joyWalk(BNM::UnityEngine::Object *thiz) {
-    BNM::Structures::Unity::Vector3 ret = old_HumanControls_get_calc_joyWalk(thiz);
-    ret.x = round(ret.x);
-    ret.z = round(ret.z);
-    return ret;
-}
-
-void (*old_MobileControlScale_Start)(BNM::UnityEngine::Object *);
-void new_MobileControlScale_Start(BNM::UnityEngine::Object *thiz) {
-    old_MobileControlScale_Start(thiz);
-    BNM::UnityEngine::Object *touchStick = MobileControlScale::TouchStick[thiz];
-    if(touchStick) InControl::TouchStickControl::snapAngles[touchStick] = SnapAngles::Eight;
-}
-
-bool (*old_OverridesBodyPitchControls)(BNM::UnityEngine::Object *);
-bool new_OverridesBodyPitchControls(BNM::UnityEngine::Object *thiz) {
-    if(!pseudoPC) return old_OverridesBodyPitchControls(thiz);
-    return MobileControlSchemeManager::LeftArmExtendValue[thiz] != 0 || MobileControlSchemeManager::RightArmExtendValue[thiz] != 0;
-}
-
-void new_ScaleControls(BNM::UnityEngine::Object *thiz) {}
-
-void (*old_Options_Load)();
-void new_Options_Load() {
-    Options::set_cameraFov(cameraFov);
-    Options::set_cameraSmoothing(cameraSmoothing);
-    Options::set_advancedVideoClouds(advancedVideoClouds);
-    if(disableShadows) UnityEngine::QualitySettings::shadowDistance = 0;
-    if(targetFrameRate >= 0) UnityEngine::Application::targetFrameRate = targetFrameRate;
-    old_Options_Load();
-}
-
-
-void ApplyLocalSave() {
-    using namespace BNM;
-
-    HOOK(Mobile::SaveGameSystem::PlayerPrefs::GetInt, ::UnityEngine::PlayerPrefs::GetInt.GetInfo()->methodPointer, nullptr);
-    HOOK(Mobile::SaveGameSystem::PlayerPrefs::SetInt, ::UnityEngine::PlayerPrefs::SetInt.GetInfo()->methodPointer, nullptr);
-    HOOK(Mobile::SaveGameSystem::PlayerPrefs::GetFloat, ::UnityEngine::PlayerPrefs::GetFloat.GetInfo()->methodPointer, nullptr);
-    HOOK(Mobile::SaveGameSystem::PlayerPrefs::SetFloat, ::UnityEngine::PlayerPrefs::SetFloat.GetInfo()->methodPointer, nullptr);
-    HOOK(Mobile::SaveGameSystem::PlayerPrefs::GetString, ::UnityEngine::PlayerPrefs::GetString.GetInfo()->methodPointer, nullptr);
-    HOOK(Mobile::SaveGameSystem::PlayerPrefs::SetString, ::UnityEngine::PlayerPrefs::SetString.GetInfo()->methodPointer, nullptr);
+void (*_HFFResources$Awake)(BNM::UnityEngine::Object *);
+void HFFResources$Awake(BNM::UnityEngine::Object *thiz) {
+    using namespace UnityEngine;
+    _HFFResources$Awake(thiz);
+    UnityEngine::GameObject::AddComponent[UnityEngine::Component::gameObject[thiz]](BNM::Class(HFFSettings::BNMCustomClass.myClass).GetMonoType());
 }
 
 void OnLoaded() {
     using namespace BNM;
 
-    if(localSave) ApplyLocalSave();
-    InvokeHook(Ball::OnEnable, new_Ball_OnEnable, old_Ball_OnEnable);
-    HOOK(HumanControls::ReadInput, new_ReadInput, old_ReadInput);
-    if(pseudoPC) {
-        InvokeHook(MobileControlScale::Start, new_MobileControlScale_Start, old_MobileControlScale_Start);
-        HOOK(HumanControls::get_calc_joyWalk, new_HumanControls_get_calc_joyWalk,
-             old_HumanControls_get_calc_joyWalk);
-        HOOK(MobileControlSchemeManager::get_OverridesBodyPitchControls, new_OverridesBodyPitchControls,
-             old_OverridesBodyPitchControls);
-    }
-    if(biggerButton) HOOK(MobileControlScale::ScaleControls, &new_ScaleControls, nullptr);
-    HOOK(Options::Load, new_Options_Load, old_Options_Load);
-}
-
-bool stob(const std::string &str) {
-    if(str == "true") return true;
-    return false;
+    InvokeHook(HFFResources::Awake, HFFResources$Awake, _HFFResources$Awake);
+    SettingsManager::Init();
+    ImGuiManager::AddOnGuiCallback(std::bind(&SettingsManager::OnGUI, SettingsManager::instance));
 }
 
 std::string GetWorkDir() {
@@ -114,38 +63,16 @@ std::string GetWorkDir() {
     return "";
 }
 
-void UseDefaultSettings() {
-    HFFSettings["lookHScale"] = "12";
-    HFFSettings["lookVScale"] = "5";
-    HFFSettings["visibleBall"] = "false";
-    HFFSettings["localSave"] = "false";
-    HFFSettings["disableShadows"] = "false";
-    HFFSettings["pseudoPC"] = "false";
-    HFFSettings["cameraFov"] = "5";
-    HFFSettings["cameraSmoothing"] = "10";
-    HFFSettings["advancedVideoClouds"] = "2";
-    HFFSettings["targetFrameRate"] = "-1";
-    HFFSettings["biggerButton"] = "false";
+void WriteSettings() {
+    if(!settingsFile)
+        settingsFile = new INIFile(GetWorkDir() + "/HFFSettings.ini");
+    settingsFile->write(settingsIni, true);
 }
 
 void ReadSettings() {
-    UseDefaultSettings();
-    std::string workDir = GetWorkDir();
-    std::fstream settingsFile;
-    settingsFile.open(workDir + "/HFFSettings.txt", std::ios_base::in);
-    if(!settingsFile) {
-        BNM_LOG_ERR("%s", "Could not open settings file!");
-        return;
-    }
-    std::string line;
-    while(std::getline(settingsFile, line)) {
-        if(line.empty()) continue;
-        auto mid = line.find_first_of('=');
-        std::string key = line.substr(0, mid);
-        std::string value = line.substr(mid + 1, line.length() - mid - 1);
-        HFFSettings[key] = value;
-    }
-    settingsFile.close();
+    if(!settingsFile)
+        settingsFile = new INIFile(GetWorkDir() + "/HFFSettings.ini");
+    settingsFile->read(settingsIni);
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
@@ -153,6 +80,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
     vm->GetEnv((void **) &env, JNI_VERSION_1_6);
 
     // Load BNM by finding the path to libil2cpp.so
+    ImGuiManager::TryInitImGui();
     BNM::Loading::TryLoadByJNI(env);
 
     // Or load using KittyMemory (as an example)
@@ -162,17 +90,6 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
     BNM::Loading::AddOnLoadedEvent(OnLoaded);
 
     ReadSettings();
-    lookHScale = std::stof(HFFSettings["lookHScale"]);
-    lookVScale = std::stof(HFFSettings["lookVScale"]);
-    visibleBall = stob(HFFSettings["visibleBall"]);
-    localSave = stob(HFFSettings["localSave"]);
-    disableShadows = stob(HFFSettings["disableShadows"]);
-    pseudoPC = stob(HFFSettings["pseudoPC"]);
-    cameraFov = std::stoi(HFFSettings["cameraFov"]);
-    cameraSmoothing = std::stoi(HFFSettings["cameraSmoothing"]);
-    advancedVideoClouds = std::stoi(HFFSettings["advancedVideoClouds"]);
-    targetFrameRate = std::stoi(HFFSettings["targetFrameRate"]);
-    biggerButton = stob(HFFSettings["biggerButton"]);
 
     return JNI_VERSION_1_6;
 }
