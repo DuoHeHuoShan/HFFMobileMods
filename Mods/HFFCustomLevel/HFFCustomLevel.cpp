@@ -77,7 +77,7 @@ void OnLoaded() {
     HOOK(WorkshopRepository::LoadBuiltinLevels, new_LoadBuiltinLevels, old_LoadBuiltinLevels);
     HOOK(Game::BeginLoadLevel, new_BeginLoadLevel, old_BeginLoadLevel);
     HOOK((BNM::MethodBase) App::PauseLeave, new_PauseLeave, old_PauseLeave);
-    HOOK(Game::Fall, new_Fall, old_Fall);
+    VirtualHook(Game::clazz, Game::Fall, new_Fall, old_Fall);
     VirtualHook(Game::clazz, Game::EnterCheckpoint, new_EnterCheckpoint, old_EnterCheckpoint);
 }
 

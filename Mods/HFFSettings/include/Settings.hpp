@@ -5,7 +5,7 @@
 #include <imgui.h>
 #include <imgui_manager.hpp>
 #include <string_view>
-#include <mINI/ini.h>
+#include <mini/ini.h>
 
 extern mINI::INIStructure settingsIni;
 

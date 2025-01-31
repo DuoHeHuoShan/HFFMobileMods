@@ -35,6 +35,10 @@ namespace UnityEngine {
         float altitudeAngle;
         float azimuthAngle;
     };
+    struct Bounds {
+        BNM::Structures::Unity::Vector3 m_Center;
+        BNM::Structures::Unity::Vector3 m_Extents;
+    };
 }
 
 BNMU_BeginDefineClass(UnityEngine::Application, "UnityEngine", Application)
@@ -68,10 +72,19 @@ BNMU_BeginDefineClass(UnityEngine::Component, "UnityEngine", Component)
     BNMU_DefineProperty(BNM::Property<BNM::UnityEngine::Object *>, gameObject)
 BNMU_EndDefineClass()
 
+BNMU_BeginDefineClass(UnityEngine::Transform, "UnityEngine", Transform)
+    BNMU_DefineProperty(BNM::Property<BNM::Structures::Unity::Vector3>, position)
+    BNMU_DefineProperty(BNM::Property<BNM::Structures::Unity::Vector3>, localScale)
+    BNMU_DefineProperty(BNM::Property<BNM::Structures::Unity::Quaternion>, rotation)
+BNMU_EndDefineClass()
+
 BNMU_BeginDefineClass(UnityEngine::GameObject, "UnityEngine", GameObject)
+    BNMU_DefineProperty(BNM::Property<void *>, transform)
     BNMU_DefineMethod(BNM::Method<BNM::UnityEngine::Object *>, Find, -1)
+    BNMU_DefineMethod(BNM::Method<BNM::UnityEngine::Object *>, CreatePrimitive, -1)
     BNMU_DefineMethod(BNM::Method<void>, SetActive, -1)
     BNMU_DefineMethod(BNM::Method<void>, AddComponent, 1)
+    BNMU_DefineMethod(BNM::Method<BNM::UnityEngine::Object *>, GetComponent, 1)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(Mobile::SaveGameSystem::PlayerPrefs, "Mobile.SaveGameSystem", PlayerPrefs)
@@ -135,4 +148,42 @@ BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(UnityEngine::Time, "UnityEngine", Time)
     BNMU_DefineProperty(BNM::Property<float>, unscaledDeltaTime)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(UnityEngine::Material, "UnityEngine", Material)
+    BNMU_DefineProperty(BNM::Property<int>, renderQueue)
+    BNMU_DefineProperty(BNM::Property<BNM::Structures::Unity::Color>, color)
+    BNMU_DefineMethod(BNM::Method<void>, SetFloat, { "name", "value" });
+    BNMU_DefineMethod(BNM::Method<void>, SetInt, { "name", "value" })
+    BNMU_DefineMethod(BNM::Method<void>, EnableKeyword, -1)
+    BNMU_DefineMethod(BNM::Method<void>, DisableKeyword, -1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(UnityEngine::Shader, "UnityEngine", Shader)
+    BNMU_DefineMethod(BNM::Method<void *>, Find, -1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(UnityEngine::Collider, "UnityEngine", Collider)
+    BNMU_DefineProperty(BNM::Property<UnityEngine::Bounds>, bounds)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(UnityEngine::BoxCollider, "UnityEngine", BoxCollider)
+    BNMU_DefineProperty(BNM::Property<BNM::Structures::Unity::Vector3>, size)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(UnityEngine::Object, "UnityEngine", Object)
+    BNMU_DefineMethod(BNM::Method<BNM::Structures::Mono::Array<void *> *>, FindObjectsOfType, 2)
+    BNMU_DefineMethod(BNM::Method<void>, Destroy, 1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(UnityEngine::Renderer, "UnityEngine", Renderer)
+    BNMU_DefineProperty(BNM::Property<void *>, material)
+    BNMU_DefineProperty(BNM::Property<void *>, sharedMaterial)
+    BNMU_DefineProperty(BNM::Property<bool>, receiveShadows)
+    BNMU_DefineProperty(BNM::Property<int>, shadowCastingMode)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(Game, "", Game)
+    BNMU_DefineField(BNM::Field<BNM::UnityEngine::Object *>, instance)
+    BNMU_DefineField(BNM::Field<int>, currentLevelNumber)
 BNMU_EndDefineClass()

@@ -11,7 +11,7 @@
 #include <BNM/ClassesManagement.hpp>
 #include <Classes.hpp>
 #include <Settings.hpp>
-#include <mINI/ini.h>
+#include <mini/ini.h>
 #include <string>
 
 using namespace mINI;
@@ -50,6 +50,7 @@ void OnLoaded() {
     using namespace BNM;
 
     InvokeHook(HFFResources::Awake, HFFResources$Awake, _HFFResources$Awake);
+
     SettingsManager::Init();
     ImGuiManager::AddOnGuiCallback(std::bind(&SettingsManager::OnGUI, SettingsManager::instance));
 }
@@ -80,7 +81,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
     vm->GetEnv((void **) &env, JNI_VERSION_1_6);
 
     // Load BNM by finding the path to libil2cpp.so
-    ImGuiManager::TryInitImGui();
+    ImGuiManager::TryInitImGui(vm);
     BNM::Loading::TryLoadByJNI(env);
 
     // Or load using KittyMemory (as an example)

@@ -1,6 +1,6 @@
 #include <Settings.hpp>
 #include <SettingsImpl.hpp>
-#include <mINI/ini.h>
+#include <mini/ini.h>
 #include <Classes.hpp>
 
 bool settingsWindowOpened = false;
@@ -44,10 +44,14 @@ void SettingsManager::Init() {
     // Extra
     instance->AddSetting<VisibleBallSetting>();
     instance->AddSetting<PseudoPCSetting>();
+    instance->AddSetting<DisplayLevelPassTriggersSetting>();
+    instance->AddSetting<DisplayFallTriggersSetting>();
+    instance->AddSetting<DisplayCheckpointsSetting>();
     // Other
     instance->AddSetting<LocalSaveSetting>();
     instance->AddSetting<FPSDisplaySetting>();
     instance->AddSetting<UIThemeSetting>();
+    instance->AddSetting<UIWindowRoundingSetting>();
 
     instance->AddSetting<SharedSetting>();
 
@@ -87,7 +91,7 @@ void SettingsManager::OnGUI() {
     if(!settingsWindowOpened) return;
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_Once);
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2, io.DisplaySize.y / 2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
-    if(ImGui::Begin("HFF手游设置插件v0.0.3")) {
+    if(ImGui::Begin("HFF手游设置插件v0.0.4")) {
         if(ImGui::BeginTabBar("SettingsTabBar")) {
             for(auto &category : settings) {
                 if(ImGui::BeginTabItem(TranslateCategory(category.first).c_str())) {

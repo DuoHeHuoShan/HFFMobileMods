@@ -3,6 +3,8 @@
 #include "Settings.hpp"
 #include <Classes.hpp>
 
+std::vector<BNM::UnityEngine::Object *> CreateHitboxesInComponents(std::vector<void *> components, BNM::Structures::Unity::Color color);
+
 class LookHScaleSetting : public SettingSlider<LookHScaleSetting, int> {
 public:
     LookHScaleSetting() : SettingSlider(SettingCategory::Control, 0, 100, 12, "lookHScale", "水平灵敏度", "%d%%") {}
@@ -107,6 +109,99 @@ public:
     void OnValueChanged(bool value);
 };
 
+class DisplayLevelPassTriggersSetting : public SettingCheckbox<DisplayLevelPassTriggersSetting> {
+private:
+    BNM::Class LevelPassTrigger;
+    std::vector<BNM::UnityEngine::Object *> hitboxes;
+    void Create() {
+        using namespace UnityEngine;
+        using namespace BNM::Structures;
+        hitboxes = CreateHitboxesInComponents(Object::FindObjectsOfType(LevelPassTrigger.GetMonoType(), false)->ToVector(), Unity::Color(0, 1, 0, 0.33f));
+    }
+public:
+    DisplayLevelPassTriggersSetting() : SettingCheckbox(SettingCategory::Extra, "displayLevelPassTrigger", false, "显示通关点") {}
+    void OnLoaded() {
+        LevelPassTrigger = BNM::Class("HumanAPI", "LevelPassTrigger");
+    }
+    void OnValueChanged(bool value) {
+        if(value) {
+            Create();
+        } else {
+            for(void *go : hitboxes) {
+                UnityEngine::Object::Destroy(go);
+            }
+            hitboxes.clear();
+        }
+    }
+    void OnLevelChanged(int level) {
+        hitboxes.clear();
+        if(!GetValue() || level == -1) return;
+        Create();
+    }
+};
+
+class DisplayFallTriggersSetting : public SettingCheckbox<DisplayFallTriggersSetting> {
+private:
+    BNM::Class FallTrigger;
+    std::vector<BNM::UnityEngine::Object *> hitboxes;
+    void Create() {
+        using namespace UnityEngine;
+        using namespace BNM::Structures;
+        hitboxes = CreateHitboxesInComponents(Object::FindObjectsOfType(FallTrigger.GetMonoType(), false)->ToVector(), Unity::Color(1, 0, 0, 0.33f));
+    }
+public:
+    DisplayFallTriggersSetting() : SettingCheckbox(SettingCategory::Extra, "displayFallTrigger", false, "显示死亡点") {}
+    void OnLoaded() {
+        FallTrigger = BNM::Class("HumanAPI", "FallTrigger");
+    }
+    void OnValueChanged(bool value) {
+        if(value) {
+            Create();
+        } else {
+            for(void *go : hitboxes) {
+                UnityEngine::Object::Destroy(go);
+            }
+            hitboxes.clear();
+        }
+    }
+    void OnLevelChanged(int level) {
+        hitboxes.clear();
+        if(!GetValue() || level == -1) return;
+        Create();
+    }
+};
+
+class DisplayCheckpointsSetting : public SettingCheckbox<DisplayCheckpointsSetting> {
+private:
+    BNM::Class Checkpoint;
+    std::vector<BNM::UnityEngine::Object *> hitboxes;
+    void Create() {
+        using namespace UnityEngine;
+        using namespace BNM::Structures;
+        hitboxes = CreateHitboxesInComponents(Object::FindObjectsOfType(Checkpoint.GetMonoType(), false)->ToVector(), Unity::Color(1, 0.66f, 0, 0.33f));
+    }
+public:
+    DisplayCheckpointsSetting() : SettingCheckbox(SettingCategory::Extra, "displayCheckpoint", false, "显示存档点") {}
+    void OnLoaded() {
+        Checkpoint = BNM::Class("HumanAPI", "Checkpoint");
+    }
+    void OnValueChanged(bool value) {
+        if(value) {
+            Create();
+        } else {
+            for(void *go : hitboxes) {
+                UnityEngine::Object::Destroy(go);
+            }
+            hitboxes.clear();
+        }
+    }
+    void OnLevelChanged(int level) {
+        hitboxes.clear();
+        if(!GetValue() || level == -1) return;
+        Create();
+    }
+};
+
 class LocalSaveSetting : public SettingCheckbox<LocalSaveSetting> {
 private:
     static void ApplyLocalSave();
@@ -162,10 +257,22 @@ public:
     }
 };
 
+class UIWindowRoundingSetting : public SettingSlider<UIWindowRoundingSetting, float> {
+public:
+    UIWindowRoundingSetting() : SettingSlider(SettingCategory::Other, 0, 12, 0, "uiWindowRounding", "窗口圆角", "%.1f") {}
+    void OnImGuiLoaded() {
+        ImGuiManager::SetStyleVar(ImGuiStyleVar_WindowRounding, GetValue());
+    }
+    void OnValueChanged(float value) {
+        ImGuiManager::SetStyleVar(ImGuiStyleVar_WindowRounding, value);
+    }
+};
+
 class SharedSetting : public Setting {
 public:
     SharedSetting() {
         category = SettingCategory::Other;
     }
     void OnLoaded();
+    void OnUpdate();
 };
