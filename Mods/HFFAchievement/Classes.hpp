@@ -72,9 +72,6 @@ BNMU_BeginDefineClass(Enum, "System", Enum)
     BNMU_DefineMethod(BNM::Method<Mono::String *>, ToString, 0)
 BNMU_EndDefineClass()
 
-BNMU_BeginDefineClass(Achievement, "", Achievement)
-BNMU_EndDefineClass()
-
 BNMU_BeginDefineClass(StatsAndAchievements, "", StatsAndAchievements)
     BNMU_DefineMethod(BNM::MethodBase, UnlockAchievementInternal, -1)
     BNMU_DefineMethod(BNM::Method<void>, UnlockAchievement, -1)

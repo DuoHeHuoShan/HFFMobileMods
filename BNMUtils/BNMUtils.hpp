@@ -60,9 +60,9 @@ class BNMUPropertyDefinition;
 class BNMUClassDefinition {
 public:
     static std::vector<BNMUClassDefinition *> classDefinitions;
-    std::vector<BNMUFieldDefinition> fieldDefinitions;
+    std::vector<BNMUFieldDefinition *> fieldDefinitions;
     std::vector<BNMUMethodDefinition *> methodDefinitions;
-    std::vector<BNMUPropertyDefinition> propertyDefinitions;
+    std::vector<BNMUPropertyDefinition *> propertyDefinitions;
     std::string_view namezpace;
     std::string_view name;
     BNM::Class clazz;
@@ -86,7 +86,7 @@ public:
     BNMUFieldDefinition(BNMUClassDefinition &classDefinition, BNM::FieldBase &field,
                         std::string_view fieldName) : field(field), fieldName(fieldName),
                                                       classDefinition(classDefinition) {
-        classDefinition.fieldDefinitions.emplace_back(*this);
+        classDefinition.fieldDefinitions.emplace_back(this);
     }
 };
 
@@ -103,7 +103,6 @@ public:
     int parameters = -1;
     std::vector<std::string_view> parametersName;
     std::vector<BNM::CompileTimeClass> parametersType;
-
     BNMUMethodDefinition(BNMUClassDefinition &classDefinition, BNM::MethodBase &method,
                          std::string_view methodName, int parameters = -1) : classDefinition(
             classDefinition), method(method), methodName(methodName), parameters(parameters) {
@@ -139,7 +138,7 @@ public:
                            std::string_view propertyName) : property(property),
                                                             propertyName(propertyName),
                                                             classDefinition(classDefinition) {
-        classDefinition.propertyDefinitions.emplace_back(*this);
+        classDefinition.propertyDefinitions.emplace_back(this);
     }
 };
 
@@ -147,13 +146,13 @@ public:
 extern void BNMU_OnLoaded();
 #else
 void BNMU_OnLoaded() {
-    static bool hasInited = false;
-    if (hasInited) return;
-    hasInited = true;
+    static bool hasInitiated = false;
+    if (hasInitiated) return;
+    hasInitiated = true;
     for (BNMUClassDefinition *classDefinition: BNMUClassDefinition::classDefinitions) {
         classDefinition->clazz = BNM::Class(classDefinition->namezpace, classDefinition->name);
-        for (BNMUFieldDefinition &fieldDefinition: classDefinition->fieldDefinitions) {
-            fieldDefinition.field = classDefinition->clazz.GetField(fieldDefinition.fieldName);
+        for (BNMUFieldDefinition *fieldDefinition: classDefinition->fieldDefinitions) {
+            fieldDefinition->field = classDefinition->clazz.GetField(fieldDefinition->fieldName);
         }
         for (BNMUMethodDefinition *methodDefinition: classDefinition->methodDefinitions) {
             switch (methodDefinition->findType) {
@@ -171,9 +170,9 @@ void BNMU_OnLoaded() {
                     break;
             }
         }
-        for (BNMUPropertyDefinition &propertyDefinition: classDefinition->propertyDefinitions) {
-            propertyDefinition.property = classDefinition->clazz.GetProperty(
-                    propertyDefinition.propertyName);
+        for (BNMUPropertyDefinition *propertyDefinition: classDefinition->propertyDefinitions) {
+            propertyDefinition->property = classDefinition->clazz.GetProperty(
+                    propertyDefinition->propertyName);
         }
     }
 }

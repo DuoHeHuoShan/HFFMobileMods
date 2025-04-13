@@ -202,6 +202,20 @@ public:
     }
 };
 
+class FreeCameraSetting : public SettingButton<FreeCameraSetting> {
+public:
+    void *camTransform;
+    FreeCameraSetting() : SettingButton(SettingCategory::Extra, "切换自由视角") {}
+    void OnLoaded();
+    void OnClick();
+};
+
+class TimePauseSetting : public SettingButton<TimePauseSetting> {
+public:
+    TimePauseSetting() : SettingButton(SettingCategory::Extra, "切换暂停状态") {}
+    void OnClick();
+};
+
 class LocalSaveSetting : public SettingCheckbox<LocalSaveSetting> {
 private:
     static void ApplyLocalSave();

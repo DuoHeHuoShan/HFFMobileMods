@@ -38,6 +38,13 @@ jobject currentUnityPlayer;
 
 std::string lastInputString;
 
+struct {
+    float x;
+    float y;
+    int pointers;
+    float y_velocity;
+} g_LastTouchEvent;
+
 std::string GetWorkDir() {
     Dl_info dlInfo;
     if(dladdr((void *) &GetWorkDir, &dlInfo) > 0) {
@@ -47,24 +54,26 @@ std::string GetWorkDir() {
     return "";
 }
 
-static void (*old_InputMessage)(AInputEvent *, void *, void *);
-static void new_InputMessage(AInputEvent *input_event, void *arg1, void *arg2) {
-    old_InputMessage(input_event, arg1, arg2);
-    if(ImGui::GetCurrentContext() == nullptr || onGuiFunctions.empty()) return;
-    mtx.lock();
-    ImGui_ImplAndroid_HandleInputEvent(input_event);
-    mtx.unlock();
-}
-
-static int32_t (*old_consume)(void *thiz, void *, bool, long, uint32_t *, AInputEvent **);
-static int32_t new_consume(void *thiz, void *arg1, bool arg2, long arg3, uint32_t *arg4, AInputEvent **input_event) {
-    auto result = old_consume(thiz, arg1, arg2, arg3, arg4, input_event);
-    if(ImGui::GetCurrentContext() == nullptr || onGuiFunctions.empty()) return result;
-    if(result != 0 || *input_event == nullptr) return result;
-    mtx.lock();
-    ImGui_ImplAndroid_HandleInputEvent(*input_event);
-    mtx.unlock();
-    return result;
+void HandleInputEvent(int motionEvent, int x, int y, int p) {
+    float velocity_y = (float)((float)y - g_LastTouchEvent.y) / 100.0f;
+    g_LastTouchEvent = {.x = static_cast<float>(x), .y = static_cast<float>(y), .pointers = p, .y_velocity = velocity_y};
+    ImGuiIO &io = ImGui::GetIO();
+    io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
+    io.AddMousePosEvent(g_LastTouchEvent.x, g_LastTouchEvent.y);
+    if(motionEvent == 2) {
+        if (g_LastTouchEvent.pointers > 1) {
+            io.MouseWheel = g_LastTouchEvent.y_velocity;
+            io.AddMouseButtonEvent(0, false);
+        } else {
+            io.MouseWheel = 0;
+        }
+    }
+    if(motionEvent == 0) {
+        io.AddMouseButtonEvent(0, true);
+    }
+    if(motionEvent == 1) {
+        io.AddMouseButtonEvent(0, false);
+    }
 }
 
 static void TrySetupImgui() {
@@ -173,6 +182,29 @@ void ImGuiManager::SetStyleVar(ImGuiStyleVar idx, const ImVec2 &val) {
     styleVarsVec2[idx] = val;
 }
 
+bool (*old_nativeInjectEvent)(JNIEnv*, jobject , jobject);
+bool new_nativeInjectEvent(JNIEnv* env, jobject instance, jobject event) {
+    if(ImGui::GetCurrentContext() == nullptr || onGuiFunctions.empty()) return old_nativeInjectEvent(env, instance, event);
+    jclass tchcls = env->FindClass("android/view/MotionEvent");
+    if(!env->IsInstanceOf(event, tchcls)) {
+        return old_nativeInjectEvent(env, instance, event);
+    }
+    jmethodID id_getAct = env->GetMethodID(tchcls, "getActionMasked", "()I");
+    jmethodID id_getX = env->GetMethodID(tchcls, "getX", "()F");
+    jmethodID id_getY = env->GetMethodID(tchcls, "getY", "()F");
+    jmethodID id_getPs = env->GetMethodID(tchcls, "getPointerCount", "()I");
+    mtx.lock();
+    HandleInputEvent(env->CallIntMethod(event, id_getAct),env->CallFloatMethod(event, id_getX) * touchRatioX, env->CallFloatMethod(event, id_getY) * touchRatioY, env->CallIntMethod(event, id_getPs));
+    mtx.unlock();
+    auto &g = *GImGui;
+    ImGuiWindow *hoveredWindow, *hoveredWindowUnderMovingWindow;
+    ImGui::FindHoveredWindowEx({ g_LastTouchEvent.x, g_LastTouchEvent.y }, false, &hoveredWindow, &hoveredWindowUnderMovingWindow);
+    if (hoveredWindow || hoveredWindowUnderMovingWindow) {
+        return false;
+    }
+    return old_nativeInjectEvent(env, instance, event);
+}
+
 void (*old_nativeSetInputString)(JNIEnv *, jobject, jstring);
 void new_nativeSetInputString(JNIEnv *env, jobject instance, jstring str) {
     if(ImGui::GetCurrentContext() == nullptr || onGuiFunctions.empty()) {
@@ -197,8 +229,11 @@ jint new_RegisterNatives(JNIEnv* env, jclass destinationClass, JNINativeMethod* 
                           jint methodCount){
     for (int i = 0; i < methodCount; ++i )
     {
-        if (!strcmp(methods[i].name, "nativeSetInputString") ) {
+        if (!strcmp(methods[i].name, "nativeSetInputString")) {
             DobbyHook(methods[i].fnPtr, (void *) &new_nativeSetInputString, (void **) &old_nativeSetInputString);
+        }
+        if (!strcmp(methods[i].name, "nativeInjectEvent")) {
+            DobbyHook(methods[i].fnPtr, (void *) &new_nativeInjectEvent, (void **) &old_nativeInjectEvent);
         }
     }
     return old_RegisterNatives(env, destinationClass, methods, methodCount);
@@ -219,13 +254,4 @@ void ImGuiManager::TryInitImGui(JavaVM *vm) {
     UnityPlayerActivity_mUnityPlayer = env->GetFieldID(UnityPlayerActivity, "mUnityPlayer", "Lcom/unity3d/player/UnityPlayer;");
     DobbyHook((void *) env->functions->RegisterNatives, (void *) new_RegisterNatives, (void **) &old_RegisterNatives);
     DobbyHook((void *) &eglSwapBuffers, (void *) &new_eglSwapBuffers, (void **) &old_eglSwapBuffers);
-    void *sym_input = DobbySymbolResolver(("/system/lib/libinput.so"), ("_ZN7android13InputConsumer21initializeMotionEventEPNS_11MotionEventEPKNS_12InputMessageE"));
-    if (nullptr != sym_input) {
-        DobbyHook(sym_input, (void *) &new_InputMessage, (void **) &old_InputMessage);
-    } else {
-        sym_input = DobbySymbolResolver(("/system/lib/libinput.so"), ("_ZN7android13InputConsumer7consumeEPNS_26InputEventFactoryInterfaceEblPjPPNS_10InputEventE"));
-        if(nullptr != sym_input) {
-            DobbyHook(sym_input, (void *) &new_consume, (void **) &old_consume);
-        }
-    }
 }

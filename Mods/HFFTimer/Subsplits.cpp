@@ -14,11 +14,11 @@ std::map<uint64_t, std::vector<Subsplit *>> subsplitConfig {
         static_cast<uint64_t>(LevelNumbers::Mansion),
         {
             new GetUpSubsplit("起身"),
-            new JumpAfterTriggerSubsplit("跳岛", {4, 5.5f, 1.2f}, {30, 5, 1}),
-//            new LogicSubsplit("按按钮", []() {
-//                return GrabTriggerSubsplit::Process({1.5f, 4, 31.4f}, {0.8f, 0.8f, 0.6f})
-//                    && GrabTriggerSubsplit::Process({2.5f, 4, 31.4f}, {0.8f, 0.8f, 0.6f});
-//            }),
+            new LandAfterTriggerSubsplit("跳岛", {4, 5.5f, 1.2f}, {30, 5, 1}),
+            new LogicSubsplit("按按钮", []() {
+                return GrabTriggerSubsplit::Process({1.5f, 4, 31.4f}, {0.8f, 0.8f, 0.6f})
+                    && GrabTriggerSubsplit::Process({2.5f, 4, 31.4f}, {0.8f, 0.8f, 0.6f});
+            }),
             new EnterTriggerSubsplit("起飞", {-4.1f, 6.1f, -22}, {8, 0.4f, 10}),
             new FallSubsplit("刷新")
         }
@@ -43,6 +43,7 @@ std::map<uint64_t, std::vector<Subsplit *>> subsplitConfig {
         static_cast<uint64_t>(LevelNumbers::Mountain),
         {
             new GetUpSubsplit("起身"),
+            new GrabTriggerSubsplit("抓墙", {-4, 3.25f, -10}, {10, 1, 5}),
             new GrabSubsplit("抓火车", "Level/Plateau/Platform8x2x3/Cargo8x2x2"),
             new JumpAfterTriggerSubsplit("跳岛", {6.5f, 20.5f, 13.3f}, {14, 3, 1}),
             new JumpAfterTriggerSubsplit("碰楼梯", {36, 23, 57}, {3, 2, 1}),
@@ -91,6 +92,15 @@ std::map<uint64_t, std::vector<Subsplit *>> subsplitConfig {
             new GetUpSubsplit("起身"),
             new GrabTriggerSubsplit("抓墙", {7.5f, 0.6f, -16}, {7.1f, 2, 0.3f}),
             new GrabSubsplit("抬门", "Level/Lane4/02LiftDoorPuzzle/D_GapDoor")
+        }
+    },
+    {
+        static_cast<uint64_t>(LevelNumbers::Dark),
+        {
+            new GetUpSubsplit("起身"),
+            new GrabSubsplit("抓斧", "AxeHandle"),
+            new JumpAfterTriggerSubsplit("进洞", {-19.5f, 3.2f, 145}, {4, 1, 3}),
+            new FallSubsplit("刷新")
         }
     },
     {

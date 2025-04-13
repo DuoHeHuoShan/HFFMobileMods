@@ -25,4 +25,5 @@ target_link_libraries(
         PUBLIC
         BNM
         ImGui
+        SharedData
 )

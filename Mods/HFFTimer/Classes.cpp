@@ -116,6 +116,7 @@ BNMU_BeginDefineClass(Human, "", Human)
     BNMU_DefineField(BNM::Field<void *>, ragdoll)
     BNMU_DefineField(BNM::Field<HumanState>, state)
     BNMU_DefineField(BNM::Field<bool>, jump)
+    BNMU_DefineField(BNM::Field<bool>, onGround)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(GrabManager, "", GrabManager)

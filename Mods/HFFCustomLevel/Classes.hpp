@@ -26,6 +26,13 @@ enum class WorkshopItemType {
     Lobby = 7
 };
 
+BNMU_BeginDefineClass(String, "System", String)
+    BNMU_DefineMethod(BNM::Method<Mono::String *>, Replace, { "oldValue", "newValue" })
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(SceneManager, "UnityEngine.SceneManagement", SceneManager)
+    BNMU_DefineMethod(BNM::MethodBase, LoadSceneAsync, { "sceneName", "mode" })
+BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(FileTools, "", FileTools)
     BNMU_DefineMethod(BNM::Method<Mono::Array<Mono::String *> *>, ListDirectories, -1)

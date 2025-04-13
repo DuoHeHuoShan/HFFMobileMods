@@ -179,6 +179,9 @@ public:
             Trigger();
         }
     }
+    void OnStart() {
+        triggerEntered = false;
+    }
     void OnReset() {
         triggerEntered = false;
     }
@@ -200,5 +203,30 @@ public:
             if(triggeredTime == 0) triggeredTime = HFFTimer::instance->ssTime;
             triggered = true;
         }
+    }
+};
+
+class LandAfterTriggerSubsplit : public Subsplit {
+private:
+    Vector3 pos;
+    Vector3 size;
+    bool triggerEntered;
+public:
+    LandAfterTriggerSubsplit(std::string_view label, Vector3 pos, Vector3 size) : Subsplit(label, {}), pos(pos), size(size) {}
+    LandAfterTriggerSubsplit(std::string_view label, Vector3 pos, Vector3 size, std::initializer_list<SpeedrunMode> supportModes) : Subsplit(label, supportModes), pos(pos), size(size) {}
+    void Update() {
+        using namespace UnityEngine;
+        if(BoxContains(Transform::position[Component::transform[Human::Localplayer]], pos, size)) {
+            triggerEntered = true;
+        }
+        if(triggerEntered && Human::onGround[Human::Localplayer]) {
+            Trigger();
+        }
+    }
+    void OnStart() {
+        triggerEntered = false;
+    }
+    void OnReset() {
+        triggerEntered = false;
     }
 };

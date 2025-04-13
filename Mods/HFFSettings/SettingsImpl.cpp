@@ -1,6 +1,8 @@
 #include <SettingsImpl.hpp>
 
 BNM::UnityEngine::Object *triggerMaterial;
+bool triggerOnceF8 = false;
+bool triggerOnceF6 = false;
 
 std::vector<BNM::UnityEngine::Object *> CreateHitboxesInComponents(std::vector<void *> components, BNM::Structures::Unity::Color color) {
     using namespace UnityEngine;
@@ -99,7 +101,7 @@ bool new_OverridesBodyPitchControls(BNM::UnityEngine::Object *thiz) {
 
 void PseudoPCSetting::OnLoaded(bool value) {
     InvokeHook(MobileControlScale::Start, new_MobileControlScale_Start, old_MobileControlScale_Start);
-    HOOK(HumanControls::get_calc_joyWalk, new_HumanControls_get_calc_joyWalk,
+    HOOK((BNM::MethodBase) HumanControls::get_calc_joyWalk, new_HumanControls_get_calc_joyWalk,
          old_HumanControls_get_calc_joyWalk);
     HOOK(MobileControlSchemeManager::get_OverridesBodyPitchControls, new_OverridesBodyPitchControls,
          old_OverridesBodyPitchControls);
@@ -113,15 +115,52 @@ void PseudoPCSetting::OnValueChanged(bool value) {
     }
 }
 
+void (*old_FreeRoamCam_OnEnable)(void *);
+void new_FreeRoamCam_OnEnable(void *instance) {
+    using namespace UnityEngine;
+    old_FreeRoamCam_OnEnable(instance);
+    FreeCameraSetting::instance->camTransform = GameObject::transform[Component::gameObject[instance]];
+}
+
+void FreeCameraSetting::OnLoaded() {
+    BNM::InvokeHook(FreeRoamCam::OnEnable, new_FreeRoamCam_OnEnable, old_FreeRoamCam_OnEnable);
+}
+
+void FreeCameraSetting::OnClick() {
+    triggerOnceF8 = true;
+}
+
+void TimePauseSetting::OnClick() {
+    triggerOnceF6 = true;
+}
+
 void (*old_ReadInput)(BNM::UnityEngine::Object *, void *);
 void new_ReadInput(BNM::UnityEngine::Object *thiz, void *outInputState) {
+    using namespace UnityEngine;
     HumanControls::lookHScale[thiz] = float(LookHScaleSetting::instance->GetValue());
     HumanControls::lookVScale[thiz] = float(LookVScaleSetting::instance->GetValue());
+    if(FreeCameraSetting::instance->camTransform != nullptr)
+        Transform::Translate[FreeCameraSetting::instance->camTransform](HumanControls::get_calc_joyWalk[thiz]() * 0.25f);
     old_ReadInput(thiz, outInputState);
+}
+
+bool (*old_GetKeyDown)(int);
+bool new_GetKeyDown(int key) {
+    if(key == 289) { // f8
+        auto result = old_GetKeyDown(key) || triggerOnceF8;
+        triggerOnceF8 = false;
+        return result;
+    } else if(key == 287) { // f6
+        auto result = old_GetKeyDown(key) || triggerOnceF6;
+        triggerOnceF6 = false;
+        return result;
+    }
+    return old_GetKeyDown(key);
 }
 
 void SharedSetting::OnLoaded() {
     HOOK(HumanControls::ReadInput, new_ReadInput, old_ReadInput);
+    HOOK(UnityEngine::Input::GetKeyDown, new_GetKeyDown, old_GetKeyDown);
 }
 
 void SharedSetting::OnUpdate() {

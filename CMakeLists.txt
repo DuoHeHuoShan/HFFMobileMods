@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.8...3.26)
 
 project(NativeModLoader)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-delete-null-pointer-checks")
 
+add_subdirectory(SharedData)
 add_subdirectory(mINI)
 add_subdirectory(ByNameModding EXCLUDE_FROM_ALL)
 add_subdirectory(ImGui EXCLUDE_FROM_ALL)

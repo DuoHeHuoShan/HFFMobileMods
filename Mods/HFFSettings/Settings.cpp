@@ -47,6 +47,8 @@ void SettingsManager::Init() {
     instance->AddSetting<DisplayLevelPassTriggersSetting>();
     instance->AddSetting<DisplayFallTriggersSetting>();
     instance->AddSetting<DisplayCheckpointsSetting>();
+    instance->AddSetting<FreeCameraSetting>();
+    instance->AddSetting<TimePauseSetting>();
     // Other
     instance->AddSetting<LocalSaveSetting>();
     instance->AddSetting<FPSDisplaySetting>();
@@ -74,11 +76,14 @@ void SettingsManager::Init() {
 
 void SettingsManager::OnUpdate() {
     if(ShouldToggleMenu()) settingsWindowOpened = !settingsWindowOpened;
+    bool isCheated = false;
     for(auto &category : settings) {
         for(auto &setting : category.second) {
             setting->OnUpdate();
+            isCheated = isCheated || setting->CheatCheck();
         }
     }
+    SharedData::SetData<bool>("HFFSettings::isCheated", isCheated);
 }
 
 void SettingsManager::OnGUI() {
@@ -91,7 +96,7 @@ void SettingsManager::OnGUI() {
     if(!settingsWindowOpened) return;
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_Once);
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2, io.DisplaySize.y / 2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
-    if(ImGui::Begin("HFF手游设置插件v0.0.4")) {
+    if(ImGui::Begin("HFF手游设置插件v0.0.5")) {
         if(ImGui::BeginTabBar("SettingsTabBar")) {
             for(auto &category : settings) {
                 if(ImGui::BeginTabItem(TranslateCategory(category.first).c_str())) {

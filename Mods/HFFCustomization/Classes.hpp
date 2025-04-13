@@ -40,10 +40,6 @@ std::string WorkshopItemType2String(WorkshopItemType workshopItemType) {
     }
 }
 
-struct Enum : BNM::IL2CPP::Il2CppObject {
-    int value;
-};
-
 BNMU_BeginDefineClass(CustomizationEditMenu, "", CustomizationEditMenu)
     BNMU_DefineField(BNM::Field<BNM::UnityEngine::Object *>, paintButton)
     BNMU_DefineMethod(BNM::MethodBase, OnGotFocus, 0)

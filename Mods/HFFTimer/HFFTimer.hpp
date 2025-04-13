@@ -29,8 +29,6 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
     bool displaySubsplits = true;
     SpeedrunMode mode = SpeedrunMode::Any;
     std::string invalidText;
-    int cpMaxCount = 0;
-    int cpCount = 0;
 
     TimerStyle timerStyle = TimerStyle::Solid;
     ImColor timerColor = ImColor(255, 0, 255);

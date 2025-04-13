@@ -16,6 +16,7 @@
 #include <imgui.h>
 #include "SubsplitsManager.hpp"
 #include "imgui_internal.h"
+#include <SharedData.hpp>
 
 using namespace mINI;
 
@@ -97,7 +98,7 @@ std::string HFFTimer::GetSpeedrunText() {
     std::stringstream stringStream;
     stringStream << "项目: " << modesStr[int(mode)] << std::endl;
     if(mode == SpeedrunMode::Checkpoint)
-        stringStream << "存档: " << cpCount << "/" << cpMaxCount << std::endl;
+        stringStream << "存档: " << Game::currentCheckpointNumber[Game::instance].Get() << std::endl;
     return stringStream.str();
 }
 
@@ -118,6 +119,7 @@ bool HFFTimer::ShouldToggleMenu() {
 void HFFTimer::Reset() {
     invalidText = "";
     gameTime = HFFTimer::instance->prevGameTime = 0;
+    SharedData::InvokeCallback<void()>("HFFTimer::OnReset");
 }
 
 void HFFTimer::Update() {
@@ -138,30 +140,40 @@ void HFFTimer::Update() {
     }
     if(prevGameState == GameState::PlayingLevel && Game::state[Game::instance] == GameState::LoadingLevel) {
         gameTime += Time::deltaTime; // 增加通关到前一帧的时间
+        ssTime = gameTime - prevGameTime;
         prevLevelGameTime = gameTime - prevGameTime;
         prevGameTime = gameTime;
     }
     if((prevGameState == GameState::LoadingLevel || prevGameState == GameState::Inactive) && Game::state[Game::instance] == GameState::PlayingLevel) {
         oldCpNumber = 0;
-        cpCount = 0;
-        cpMaxCount = 0;
-        if(Game::currentLevelNumber[Game::instance] == 9) {
-            cpMaxCount = 15;
-        } else if(Game::currentLevelNumber[Game::instance] == 7 || Game::currentLevelNumber[Game::instance] == 21) {
-            cpMaxCount = 10;
-        } else {
-            cpMaxCount = FindCheckpoints()->GetCapacity() - 1;
-        }
     } else if(oldCpNumber != Game::currentCheckpointNumber[Game::instance]) {
+        int currentCheckpointNumber = Game::currentCheckpointNumber[Game::instance];
         if(mode == SpeedrunMode::NoCheckPoint) {
-            invalidText = "无效!";
+            invalidText = "无效: 存档";
         }
-        cpCount++;
+        if(mode == SpeedrunMode::Checkpoint && currentCheckpointNumber - oldCpNumber > 1) {
+            switch (Game::currentLevelNumber[Game::instance]) {
+                case 9:
+                    if((oldCpNumber != 6 || currentCheckpointNumber != 11) && (oldCpNumber != 17 || currentCheckpointNumber < 19 || currentCheckpointNumber > 23) && (oldCpNumber < 18 || oldCpNumber > 20 || currentCheckpointNumber < 21 || currentCheckpointNumber > 24) && (oldCpNumber < 21 || oldCpNumber > 22 || currentCheckpointNumber != 24)) {
+                        invalidText = "无效: 漏点";
+                    }
+                    break;
+                case 21:
+                    if((oldCpNumber != 7 || currentCheckpointNumber != 9) && (oldCpNumber != 8 || currentCheckpointNumber != 10)) {
+                        invalidText = "无效: 漏点";
+                    }
+                    break;
+                default:
+                    invalidText = "无效: 漏点";
+                    break;
+            }
+        }
         oldCpNumber = Game::currentCheckpointNumber[Game::instance];
     }
     prevGameState = Game::state[Game::instance];
     prevAppState = App::state;
     SubsplitsManager::Update();
+    if(SharedData::GetData<bool>("HFFSettings::isCheated")) invalidText = "无效: 作弊";
     if(dirty) {
         WriteConfig();
         dirty = false;
@@ -245,7 +257,7 @@ void HFFTimer::OnGUI() {
     if(!timerWindowOpened) return;
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2, io.DisplaySize.y / 2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_Once);
-    if(ImGui::Begin("HFF手游计时器v0.0.4")) {
+    if(ImGui::Begin("HFF手游计时器v0.0.5")) {
         if(ImGui::BeginTabBar("TimerTabBar")) {
             if(ImGui::BeginTabItem("计时")) {
                 ImGui::Checkbox("启用计时器", &enableTimer);

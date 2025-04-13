@@ -28,5 +28,6 @@ enum class LevelNumbers : uint64_t {
     Port = 23,
     Underwater = 24,
     Dockyard = 25,
-    Museum = 26
+    Museum = 26,
+    Hike = 27
 };

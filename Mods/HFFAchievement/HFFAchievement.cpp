@@ -14,6 +14,8 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <SharedData.hpp>
+#include "Achievements.hpp"
 namespace fs = std::filesystem;
 
 // Simple helper function to load an image into a OpenGL texture with common settings
@@ -70,6 +72,7 @@ const float POPUP_SHOW_TIME = 3;
 const float POPUP_STAY_TIME = 2;
 const float POPUP_APPEARED_TIME = POPUP_STAY_TIME + (POPUP_SHOW_TIME - POPUP_STAY_TIME) / 2;
 const float POPUP_DISAPPEAR_TIME = (POPUP_SHOW_TIME - POPUP_STAY_TIME) / 2;
+const int ACHIEVEMENT_COUNT = 55;
 
 struct UnlockedAchievementData {
     std::string label;
@@ -81,6 +84,8 @@ float popupTime = 0;
 std::queue<UnlockedAchievementData> unlockAchievementQueue;
 UnlockedAchievementData lastAchievementData;
 bool achievementWindowOpened = false;
+bool showAchievementProgress = false;
+bool clearWhenTimerReset = false;
 
 std::vector<int> unlockedAchievements;
 std::vector<int> allAchievements;
@@ -90,6 +95,15 @@ std::map<std::string, std::string> locale;
 void ClearAchievements() {
     unlockedAchievements.clear();
     PlayerPrefs::DeleteKey(BNM::CreateMonoString("UnlockedAchievements"));
+    for(std::string_view incInt : { "fall", "jump", "drown" }) {
+        BNM::Field<int> field = StatsAndAchievements::clazz.GetField(incInt);
+        field.Set(0);
+    }
+    for(std::string_view incFloat : { "travelM", "climbM", "carryM", "shipM", "driveM", "dumpsterM" }) {
+        BNM::Field<float> field = StatsAndAchievements::clazz.GetField(incFloat);
+        field.Set(0);
+    }
+    StatsAndAchievements::SyncStats(true);
 }
 
 void LoadUnlockedAchievements() {
@@ -113,6 +127,14 @@ void SaveUnlockedAchievements() {
     PlayerPrefs::SetString(BNM::CreateMonoString("UnlockedAchievements"), BNM::CreateMonoString(data));
 }
 
+int GetUnlockedAchievementCount(bool excludeIncAchievement = false) {
+    int count = 0;
+    for(int ach : unlockedAchievements) {
+        if(ach < ACHIEVEMENT_COUNT && (!excludeIncAchievement || !(ach >= 10 && ach <= 22))) ++count;
+    }
+    return count;
+}
+
 void OnGUI() {
     ImGuiIO &io = ImGui::GetIO();
     if(!unlockAchievementQueue.empty() && popupTime <= 0) {
@@ -120,6 +142,7 @@ void OnGUI() {
         lastAchievementData = unlockAchievementQueue.front();
         unlockAchievementQueue.pop();
     }
+    ImVec2 achievementProgressPos = ImVec2(io.DisplaySize.x, 0);
     if(popupTime > 0 && popupTime <= POPUP_SHOW_TIME) {
         ImGui::SetNextWindowSize(ImVec2(POPUP_WIDTH, POPUP_HEIGHT), ImGuiCond_Once);
         if(popupTime > POPUP_APPEARED_TIME) {
@@ -149,11 +172,21 @@ void OnGUI() {
         ImGui::TextColored(ImColor(textColor.x, textColor.y, textColor.z, 100.0f / 255.0f), "%s", lastAchievementData.description.c_str());
         ImGui::PopTextWrapPos();
         ImGui::EndChild();
+        achievementProgressPos = ImGui::GetWindowPos() + ImVec2(POPUP_WIDTH + 20, POPUP_HEIGHT);
+        ImGui::End();
+    }
+    if(showAchievementProgress) {
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs;
+        ImGui::SetNextWindowPos(achievementProgressPos, ImGuiCond_Always, ImVec2(1, 0));
+        ImGui::Begin("achievementProgressWindow", nullptr, window_flags);
+        ImGui::TextColored(ImColor(255, 0, 255), "全部成就: %d/%d\n无累计成就: %d/%d",
+                           GetUnlockedAchievementCount(), ACHIEVEMENT_COUNT,
+                           GetUnlockedAchievementCount(true), ACHIEVEMENT_COUNT - 13);
         ImGui::End();
     }
     if(!achievementWindowOpened) return;
     ImGui::SetNextWindowSize(ImVec2(500, 300), ImGuiCond_Once);
-    if(ImGui::Begin("HFF手游成就插件v0.0.4", nullptr, ImGuiWindowFlags_NoResize)) {
+    if(ImGui::Begin("HFF手游成就插件v0.0.5", nullptr, ImGuiWindowFlags_NoResize)) {
         static int displayMode = 0; // 0 已解锁 1 未解锁 2 全部
         static int current_achievement = -1;
         static std::string currentAchievementName {};
@@ -163,7 +196,7 @@ void OnGUI() {
             if(displayMode == 1 &&
                     std::find(unlockedAchievements.begin(), unlockedAchievements.end(), achievementId) != unlockedAchievements.end())
                 continue;
-            std::string achievementName = Enum::ToString[Achievement::clazz.BoxObject(&achievementId)]()->str();
+            std::string achievementName = Achievement2Str[(Achievement) achievementId];
             std::string achievementLabel = achievementName + "_LABEL";
             if(locale.contains(achievementLabel)) achievementLabel = locale[achievementLabel];
             if(ImGui::Selectable(achievementLabel.c_str(), current_achievement == achievementId)) {
@@ -205,6 +238,8 @@ void OnGUI() {
                 BNM::DetachIl2Cpp();
             }
         }
+        ImGui::Checkbox("显示成就进度", &showAchievementProgress);
+        ImGui::Checkbox("计时器重置自动清空成就", &clearWhenTimerReset);
     }
     ImGui::End();
 }
@@ -254,7 +289,7 @@ void new_UnlockAchievementInternal(int achievement, bool incAchievement, int) {
     if(!CheatCodes::cheatMode && std::find(unlockedAchievements.begin(),
                                             unlockedAchievements.end(), achievement) == unlockedAchievements.end()) {
         unlockedAchievements.push_back(achievement);
-        std::string achievementName = Enum::ToString[Achievement::clazz.BoxObject(&achievement)]()->str();
+        std::string achievementName = Achievement2Str[(Achievement) achievement];
         std::string unlockedAchievementLabel = achievementName + "_LABEL";
         std::string unlockedAchievementDescription = achievementName + "_DESC";
         ImTextureID unlockedAchievementTexture = 0;
@@ -346,6 +381,11 @@ void OnImGuiLoaded() {
     }
 }
 
+void OnTimerReset() {
+    if(!clearWhenTimerReset) return;
+    ClearAchievements();
+}
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
     JNIEnv *env;
     vm->GetEnv((void **) &env, JNI_VERSION_1_6);
@@ -354,6 +394,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
     // Load BNM by finding the path to libil2cpp.so
     ImGuiManager::TryInitImGui(vm);
     ImGuiManager::AddOnLoadedCallback(OnImGuiLoaded);
+    SharedData::AddCallback<void()>("HFFTimer::OnReset", OnTimerReset);
     BNM::Loading::TryLoadByJNI(env);
 
     // Or load using KittyMemory (as an example)
@@ -364,7 +405,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
 
     ReadAchNames(GetWorkDir() + "/AchievementResources/ach_names.txt");
 
-    for(int i = 0; i <= 54; ++i) {
+    for(int i = 0; i < ACHIEVEMENT_COUNT; ++i) {
         allAchievements.push_back(i);
     }
 

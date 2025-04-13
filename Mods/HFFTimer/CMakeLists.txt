@@ -33,4 +33,5 @@ target_link_libraries(
         BNM
         ImGui
         mINI
+        SharedData
 )

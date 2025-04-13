@@ -6,6 +6,8 @@
 #include <imgui_manager.hpp>
 #include <string_view>
 #include <mini/ini.h>
+#include <SharedData.hpp>
+#include "BNM/Utils.hpp"
 
 extern mINI::INIStructure settingsIni;
 
@@ -29,6 +31,9 @@ public:
     virtual void OnGUIExtra() {}
     virtual void OnUpdate() {}
     virtual void OnAwake() {}
+    virtual bool CheatCheck() {
+        return false;
+    }
 };
 
 class SettingsManager {
@@ -114,6 +119,9 @@ public:
     static I *instance;
     void OnLoaded();
     void OnGUI();
+    bool CheatCheck() {
+        return category == SettingCategory::Extra && _value;
+    }
     inline bool GetValue() {
         return _value;
     }
@@ -156,3 +164,28 @@ public:
 
 template<typename I, typename T> requires std::is_enum_v<T>
 I *SettingComboBox<I, T>::instance;
+
+template<typename I>
+class SettingButton : public Setting {
+private:
+    const char *_label;
+protected:
+    SettingButton(SettingCategory settingCategory, const char *label) : _label(label) {
+        instance = (I *) this;
+        category = settingCategory;
+    }
+    virtual void OnClick() {}
+public:
+    static I *instance;
+    void OnGUI() {
+        if(ImGui::Button(_label)) {
+            if(BNM::AttachIl2Cpp()) {
+                OnClick();
+                BNM::DetachIl2Cpp();
+            }
+        }
+    } // 玄学
+};
+
+template<typename I>
+I *SettingButton<I>::instance;

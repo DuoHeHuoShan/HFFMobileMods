@@ -42,7 +42,7 @@ std::string GetChatText() {
 void OnGUI() {
     if(!chatMenuOpened) return;
     ImGui::SetNextWindowSize(ImVec2(450, 300), ImGuiCond_Once);
-    if(ImGui::Begin("HFF手游聊天框插件v0.0.4", nullptr, ImGuiWindowFlags_NoResize)) {
+    if(ImGui::Begin("HFF手游聊天框插件v0.0.5", nullptr, ImGuiWindowFlags_NoResize)) {
         ImGui::BeginChild("chatContentFrame", ImVec2(430, 210), 0,
                           ImGuiWindowFlags_HorizontalScrollbar);
         ImGui::Text("%s", GetChatText().c_str());

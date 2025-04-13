@@ -70,6 +70,15 @@ void new_EnterCheckpoint(void *instance, int checkpoint, int subObjectives) {
     old_EnterCheckpoint(instance, checkpoint, subObjectives);
 }
 
+//For 2.3.0
+
+void *(*old_LoadSceneAsync)(Mono::String *, int);
+void *new_LoadSceneAsync(Mono::String *sceneName, int mode) {
+    void *result = old_LoadSceneAsync(sceneName, mode);
+    if(result) return result;
+    return old_LoadSceneAsync(String::Replace[sceneName](BNM::CreateMonoString("_compressed"), BNM::CreateMonoString("")), mode);
+}
+
 void OnLoaded() {
     using namespace BNM;
     WorkshopTypeRepository::classDefinition.clazz = WorkshopTypeRepository::clazz.GetGeneric({WorkshopLevelMetadata::clazz});
@@ -79,6 +88,8 @@ void OnLoaded() {
     HOOK((BNM::MethodBase) App::PauseLeave, new_PauseLeave, old_PauseLeave);
     VirtualHook(Game::clazz, Game::Fall, new_Fall, old_Fall);
     VirtualHook(Game::clazz, Game::EnterCheckpoint, new_EnterCheckpoint, old_EnterCheckpoint);
+
+    HOOK(SceneManager::LoadSceneAsync, new_LoadSceneAsync, old_LoadSceneAsync);
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
