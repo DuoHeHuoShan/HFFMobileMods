@@ -14,10 +14,46 @@ void new_CustomizationEditMenu_OnGotFocus(void *instance) {
     UnityEngine::GameObject::SetActive[UnityEngine::Component::gameObject[CustomizationEditMenu::paintButton[instance]]](true);
 }
 
+static sigjmp_buf env;
+
+void sigsegv_handler(int signum, siginfo_t* info, void* context) {
+    (void)info;
+    (void)context;
+    siglongjmp(env, 1);
+}
+
+bool IsAllocated(void* ptr) {
+    struct sigaction old_act {}, new_act {};
+    new_act.sa_sigaction = sigsegv_handler;
+    new_act.sa_flags = SA_SIGINFO;
+
+    // 设置信号处理器
+    if (sigaction(SIGSEGV, &new_act, &old_act) == -1) {
+        return false;
+    }
+
+    bool accessible = false;
+    if (sigsetjmp(env, 1) == 0) {
+        // 尝试读取内存
+        volatile char c = *reinterpret_cast<volatile char*>(ptr);
+        (void)c; // 防止编译器优化
+        accessible = true;
+    }
+
+    // 恢复原信号处理
+    sigaction(SIGSEGV, &old_act, nullptr);
+    return accessible;
+}
+
+bool CheckObj(void *obj) {
+    if (obj && IsAllocated(obj)) return true;
+    return false;
+}
+
 void (*old_LoadFromPreset)(void *, void *);
 void new_LoadFromPreset(void *instance, void *preset) {
     old_LoadFromPreset(instance, preset);
-    if(preset == nullptr || RagdollPresetMetadata::folder[preset].Get() == nullptr || RagdollPresetMetadata::folder[preset].Get() >= (void *) 32000000000000000ull) return;
+    if(!CheckObj(preset) || RagdollPresetMetadata::folder[preset].Get() == nullptr || RagdollPresetMetadata::folder[preset].Get() >= (void *) 32000000000000000ull) return;
     std::string partStr = WorkshopItemType2String(RagdollTexture::part[instance].Get());
     RagdollTexture::savePath[instance] = FileTools::Combine(RagdollPresetMetadata::folder[preset].Get(), BNM::CreateMonoString(
             partStr + ".png"));
