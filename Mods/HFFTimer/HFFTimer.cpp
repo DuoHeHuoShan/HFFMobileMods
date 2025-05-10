@@ -27,7 +27,12 @@ BNM::Field<AppState> appStateField; // For ImGui thread
 INIFile *configFile;
 INIStructure configIni;
 bool dirty = false;
+std::string GetWorkDir();
 void WriteConfig();
+void SavePlayerStateToFile(const char *filePath, const PlayerState &state);
+void ReadPlayerStateFromFile(const char *filePath, PlayerState &state);
+BNM::Coroutine::IEnumerator LoadPlayerState(const PlayerState &state, bool resetObjects);
+BNM::Coroutine::IEnumerator SavePlayerState(PlayerState &state);
 
 ImVec2 ReadImVec2(const std::string &format) {
     ImVec2 vec;
@@ -51,8 +56,6 @@ std::string WriteImColor(ImColor col) {
     sprintf(c, "#%02X%02X%02X%02X", int(col.Value.x * 255), int(col.Value.y * 255), int(col.Value.z * 255), int(col.Value.w * 255));
     return c;
 }
-
-BNM::Method<BNM::Structures::Mono::Array<void *> *> FindCheckpoints;
 
 static void RestartLevel(BNM::UnityEngine::Object *instance, bool reset = true);
 
@@ -183,7 +186,7 @@ void HFFTimer::Update() {
 void HFFTimer::OnGUI() {
     using namespace Multiplayer;
     ImGuiIO &io = ImGui::GetIO();
-    if(enableRestartButton) {
+    if(enableRestartButton || enablePractice) {
         ImGuiWindowFlags button_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoBackground;
         if(!restartButtonDraggable) {
             button_flags |= ImGuiWindowFlags_NoMove;
@@ -198,11 +201,32 @@ void HFFTimer::OnGUI() {
             dirty = true;
         }
         ImGui::BeginChild("RestartButton", ImVec2(80, 80), ImGuiChildFlags_None, restartButtonDraggable ? ImGuiWindowFlags_NoInputs : ImGuiWindowFlags_None);
-        if(ImGui::Button("R", ImVec2(80, 80)) && appStateField != AppState::LoadLevel && (enableRestart || Game::state[Game::instance] == GameState::PlayingLevel)) {
+        static float restartButtonHoldTime = 0;
+        static bool restartButtonLongPressed = false;
+        if(ImGui::Button(enablePractice ? "E" : "R", ImVec2(80, 80)) && appStateField != AppState::LoadLevel && (enableRestart || enablePractice || Game::state[Game::instance] == GameState::PlayingLevel) && !restartButtonLongPressed) {
             if(BNM::AttachIl2Cpp()) {
-                Game::RestartLevel[Game::instance](true);
+                if (!enablePractice) {
+                    Game::RestartLevel[Game::instance](true);
+                } else if(practicePlayerState.valid) {
+                    UnityEngine::MonoBehaviour::StartCoroutine[Game::instance](LoadPlayerState(practicePlayerState, practiceResetObjects).get());
+                    Reset();
+                    SubsplitsManager::Reset();
+                }
                 BNM::DetachIl2Cpp();
             }
+        }
+        if(ImGui::IsItemActive()) {
+            restartButtonHoldTime += io.DeltaTime;
+            if(restartButtonHoldTime >= 0.5f && !restartButtonLongPressed) {
+                restartButtonLongPressed = true;
+                if(enablePractice && BNM::AttachIl2Cpp()) {
+                    UnityEngine::MonoBehaviour::StartCoroutine[Game::instance](SavePlayerState(practicePlayerState).get());
+                    BNM::DetachIl2Cpp();
+                }
+            }
+        } else {
+            restartButtonHoldTime = 0;
+            restartButtonLongPressed = false;
         }
         ImGui::EndChild();
         ImGui::End();
@@ -232,6 +256,7 @@ void HFFTimer::OnGUI() {
             auto drawList = ImGui::GetWindowDrawList();
             int vtxStart = drawList->VtxBuffer.size();
             ImGui::TextColored(ImColor(255, 255, 255), "%s", GetSpeedrunText().c_str());
+            if(enablePractice) ImGui::TextColored(ImColor(255, 255, 255), "%s", "练习模式");
             int vtxEnd = drawList->VtxBuffer.size();
             ImGui::ShadeVertsLinearColorGradientKeepAlpha(ImGui::GetWindowDrawList(), vtxStart, vtxEnd, ImVec2(200, 0), ImVec2(390, 120), timerColorGradient1, timerColorGradient2);
         }
@@ -257,7 +282,7 @@ void HFFTimer::OnGUI() {
     if(!timerWindowOpened) return;
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2, io.DisplaySize.y / 2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_Once);
-    if(ImGui::Begin("HFF手游计时器v0.0.5")) {
+    if(ImGui::Begin("HFF手游计时器v0.0.6a1")) {
         if(ImGui::BeginTabBar("TimerTabBar")) {
             if(ImGui::BeginTabItem("计时")) {
                 ImGui::Checkbox("启用计时器", &enableTimer);
@@ -275,6 +300,27 @@ void HFFTimer::OnGUI() {
                 ImGui::Checkbox("启用重开按钮", &enableRestartButton);
                 ImGui::Checkbox("移动重开按钮位置", &restartButtonDraggable);
                 ImGui::Checkbox("显示分段", &displaySubsplits);
+                ImGui::EndTabItem();
+            }
+            if(ImGui::BeginTabItem("练习")) {
+                if(ImGui::Checkbox("启用练习", &enablePractice)) {
+                    Reset();
+                    SubsplitsManager::Reset();
+                }
+                ImGui::Checkbox("重置物体", &practiceResetObjects);
+                ImGui::InputText("存档路径", practiceSaveStatePath, IM_ARRAYSIZE(practiceSaveStatePath));
+                if(ImGui::Button("保存存档")) {
+                    SavePlayerStateToFile((GetWorkDir() + "/" + practiceSaveStatePath).c_str(), practicePlayerState);
+                }
+                ImGui::SameLine();
+                if(ImGui::Button("读取存档") && BNM::AttachIl2Cpp()) {
+                    ReadPlayerStateFromFile((GetWorkDir() + "/" + practiceSaveStatePath).c_str(), practicePlayerState);
+                    BNM::DetachIl2Cpp();
+                }
+                if(practicePlayerState.valid) {
+                    ImGui::Text("存档关卡: %d", practicePlayerState.level);
+                    ImGui::Text("存档检查点: %d", practicePlayerState.checkpointNumber);
+                }
                 ImGui::EndTabItem();
             }
             if(ImGui::BeginTabItem("定制")) {
@@ -308,7 +354,7 @@ void HFFTimer::OnGUI() {
 
 HFFTimer *HFFTimer::instance;
 
-BNM::Coroutine::IEnumerator Restart() {
+BNM::Coroutine::IEnumerator Restart(int level) {
     using namespace Multiplayer;
     if(NetGame::isLocal) {
         Game::state[Game::instance] = GameState::Paused;
@@ -316,14 +362,103 @@ BNM::Coroutine::IEnumerator Restart() {
         App::PauseLeave[App::instance](false);
         co_yield BNM::Coroutine::WaitForFixedUpdate();
         App::LaunchSinglePlayer[Multiplayer::App::instance](
-                (unsigned long long) HFFTimer::instance->restartLevel, 0, 0);
+                (unsigned long long) level, 0, 0);
         HFFTimer::instance->Reset();
     } else if(NetGame::isServer) {
         Game::state[Game::instance] = GameState::Paused;
         co_yield BNM::Coroutine::WaitForFixedUpdate();
         Game::state[Game::instance] = GameState::Inactive;
-        App::NextLevelServer[App::instance](HFFTimer::instance->restartLevel, 0);
+        App::NextLevelServer[App::instance](level, 0);
         HFFTimer::instance->Reset();
+    }
+    co_return;
+}
+
+void SavePlayerStateToFile(const char *filePath, const PlayerState &state) {
+    if(!state.valid) return;
+    FILE *fp = fopen(filePath, "w");
+    if(!fp) return;
+    fwrite(&state, sizeof(PlayerState) - sizeof(PlayerState::gchandle) - sizeof(PlayerState::netStream), 1, fp);
+    Mono::Array<std::byte> *buffer = NetStream::buffer[state.netStream];
+    auto size = buffer->capacity;
+    fwrite(&size, sizeof(size), 1, fp);
+    fwrite(buffer->GetData(), size, 1, fp);
+    fclose(fp);
+}
+
+void ReadPlayerStateFromFile(const char *filePath, PlayerState &state) {
+    FILE *fp = fopen(filePath, "r");
+    if(!fp) return;
+    fread(&state, sizeof(PlayerState) - sizeof(PlayerState::gchandle) - sizeof(PlayerState::netStream), 1, fp);
+    BNM::IL2CPP::il2cpp_array_size_t size;
+    fread(&size, sizeof(size), 1, fp);
+    auto *buffer = new std::byte[size];
+    fread(buffer, size, 1, fp);
+    auto *nBuffer = Mono::Array<std::byte>::Create(buffer, size);
+    delete[] buffer;
+    state.netStream = NetStream::AllocStreamBytes(nBuffer, -1, 0, false, false);
+    state.gchandle = BNM::NewGCHandle(state.netStream, true);
+    fclose(fp);
+}
+
+BNM::Coroutine::IEnumerator LoadPlayerState(const PlayerState &state, bool resetObjects) {
+    if(!state.valid) co_return;
+    if(Game::currentLevelNumber[Game::instance] != state.level) {
+        resetObjects = false;
+        co_yield UnityEngine::MonoBehaviour::StartCoroutine[Game::instance](
+                Restart(state.level).get());
+        co_yield BNM::Coroutine::WaitUntil([state]() {
+            return Game::currentLevelNumber[Game::instance] == state.level && HFFTimer::instance->enablePractice;
+        });
+    }
+    auto localPlayer = Human::Localplayer.Get();
+    auto controls = Human::controls[localPlayer].Get();
+    auto identities = NetScope::list[Human::player[localPlayer]].Get()->ToVector();
+    NetStream::Seek[state.netStream](0);
+    for(void *identity : identities) {
+        NetIdentity::ApplyState[identity](state.netStream);
+    }
+    Human::state[localPlayer] = state.state;
+    Human::unconsciousTime[localPlayer] = state.unconsciousTime;
+    Human::fallTimer[localPlayer] = state.fallTimer;
+    Human::groundDelay[localPlayer] = state.groundDelay;
+    Human::jumpDelay[localPlayer] = state.jumpDelay;
+    Human::slideTimer[localPlayer] = state.slideTimer;
+    HumanControls::cameraPitchAngle[controls] = state.cameraPitchAngle;
+    HumanControls::cameraYawAngle[controls] = state.cameraYawAngle;
+    Game::currentCheckpointNumber[Game::instance] = state.checkpointNumber;
+    Game::currentCheckpointSubObjectives[Game::instance] = state.subObjectives;
+    if(resetObjects) {
+        using namespace HumanAPI;
+        SignalManager::BeginReset();
+        Level::Reset[Game::currentLevel](state.checkpointNumber, state.subObjectives);
+        SignalManager::EndReset();
+    }
+    co_return;
+}
+
+BNM::Coroutine::IEnumerator SavePlayerState(PlayerState &state) {
+    if(Game::currentLevelNumber[Game::instance] == -1) co_return;
+    auto localPlayer = Human::Localplayer.Get();
+    auto controls = Human::controls[localPlayer].Get();
+    auto identities = NetScope::list[Human::player[localPlayer]].Get()->ToVector();
+    if(state.gchandle) BNM::FreeGCHandle(state.gchandle);
+    state.valid = true;
+    state.level = Game::currentLevelNumber[Game::instance];
+    state.checkpointNumber = Game::currentCheckpointNumber[Game::instance];
+    state.subObjectives = Game::currentCheckpointSubObjectives[Game::instance];
+    state.netStream = NetStream::AllocStream(0);
+    state.gchandle = BNM::NewGCHandle(state.netStream, true);
+    state.state = Human::state[localPlayer];
+    state.unconsciousTime = Human::unconsciousTime[localPlayer];
+    state.fallTimer = Human::fallTimer[localPlayer];
+    state.groundDelay = Human::groundDelay[localPlayer];
+    state.jumpDelay = Human::jumpDelay[localPlayer];
+    state.slideTimer = Human::slideTimer[localPlayer];
+    state.cameraPitchAngle = HumanControls::cameraPitchAngle[controls];
+    state.cameraYawAngle = HumanControls::cameraYawAngle[controls];
+    for(void *identity : identities) {
+        NetIdentity::CollectState[identity](state.netStream);
     }
     co_return;
 }
@@ -331,7 +466,7 @@ BNM::Coroutine::IEnumerator Restart() {
 static void (*old_RestartLevel)(BNM::UnityEngine::Object *, bool);
 static void RestartLevel(BNM::UnityEngine::Object *instance, bool reset) {
     if(HFFTimer::instance->enableRestart) {
-        UnityEngine::MonoBehaviour::StartCoroutine[instance](Restart().get());
+        UnityEngine::MonoBehaviour::StartCoroutine[instance](Restart(HFFTimer::instance->restartLevel).get());
         return;
     }
     old_RestartLevel(instance, reset);
@@ -347,7 +482,6 @@ void HFFResources$Awake(BNM::UnityEngine::Object *thiz) {
 void OnLoaded() {
     using namespace UnityEngine;
     using namespace BNM;
-    FindCheckpoints = Object::FindObjectsOfType.GetGeneric({HumanAPI::Checkpoint::clazz});
     appStateField = Multiplayer::App::clazz.GetField("_state");
     SubsplitsManager::Init();
     HOOK((BNM::MethodBase) Game::RestartLevel, RestartLevel, old_RestartLevel);

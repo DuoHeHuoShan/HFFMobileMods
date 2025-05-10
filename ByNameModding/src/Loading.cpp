@@ -324,6 +324,8 @@ void Internal::SetupBNM() {
     INIT_IL2CPP_API(il2cpp_thread_current);
     INIT_IL2CPP_API(il2cpp_thread_attach);
     INIT_IL2CPP_API(il2cpp_thread_detach);
+    INIT_IL2CPP_API(il2cpp_gchandle_new);
+    INIT_IL2CPP_API(il2cpp_gchandle_free);
 
 #undef INIT_IL2CPP_API
 

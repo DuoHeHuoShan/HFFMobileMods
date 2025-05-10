@@ -66,6 +66,8 @@ namespace BNM::Internal {
         IL2CPP::Il2CppThread *(*il2cpp_thread_current)(IL2CPP::Il2CppDomain *){};
         IL2CPP::Il2CppThread *(*il2cpp_thread_attach)(IL2CPP::Il2CppDomain *){};
         void (*il2cpp_thread_detach)(IL2CPP::Il2CppThread *){};
+        uint32_t (*il2cpp_gchandle_new)(void *, bool){};
+        void (*il2cpp_gchandle_free)(uint32_t){};
     } il2cppMethods;
 
 #pragma pack(pop)

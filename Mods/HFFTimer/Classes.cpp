@@ -3,6 +3,7 @@
 #include <BNM/Field.hpp>
 #include <BNM/UnityStructures.hpp>
 #include <BNM/Method.hpp>
+#include <BNM/Coroutine.hpp>
 
 using namespace BNM::Structures;
 
@@ -84,13 +85,21 @@ BNMU_BeginDefineClass(HFFResources, "", HFFResources)
     BNMU_DefineMethod(BNM::MethodBase, Awake, -1)
 BNMU_EndDefineClass()
 
-BNMU_BeginDefineClass(HumanAPI::Checkpoint, "HumanAPI", Checkpoint)
+BNMU_BeginDefineClass(HumanAPI::Level, "HumanAPI", Level)
+    BNMU_DefineMethod(BNM::Method<void>, Reset, -1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(HumanAPI::SignalManager, "HumanAPI", SignalManager)
+    BNMU_DefineMethod(BNM::Method<void>, BeginReset, -1)
+    BNMU_DefineMethod(BNM::Method<void>, EndReset, -1)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(Game, "", Game)
     BNMU_DefineField(BNM::Field<BNM::UnityEngine::Object *>, instance)
+    BNMU_DefineField(BNM::Field<void *>, currentLevel)
     BNMU_DefineField(BNM::Field<int>, currentLevelNumber)
     BNMU_DefineField(BNM::Field<int>, currentCheckpointNumber)
+    BNMU_DefineField(BNM::Field<int>, currentCheckpointSubObjectives)
     BNMU_DefineMethod(BNM::Method<void>, RestartLevel, 1)
     BNMU_DefineMethod(BNM::MethodBase, Fall, -1)
     BNMU_DefineField(BNM::Field<GameState>, state)
@@ -110,11 +119,23 @@ BNMU_BeginDefineClass(Ragdoll, "", Ragdoll)
     BNMU_DefineField(BNM::Field<void *>, partRightHand)
 BNMU_EndDefineClass()
 
+BNMU_BeginDefineClass(HumanControls, "", HumanControls)
+    BNMU_DefineField(BNM::Field<float>, cameraPitchAngle)
+    BNMU_DefineField(BNM::Field<float>, cameraYawAngle)
+BNMU_EndDefineClass()
+
 BNMU_BeginDefineClass(Human, "", Human)
     BNMU_DefineProperty(BNM::Property<void *>, Localplayer)
+    BNMU_DefineField(BNM::Field<void *>, player)
     BNMU_DefineField(BNM::Field<void *>, grabManager)
     BNMU_DefineField(BNM::Field<void *>, ragdoll)
+    BNMU_DefineField(BNM::Field<void *>, controls)
     BNMU_DefineField(BNM::Field<HumanState>, state)
+    BNMU_DefineField(BNM::Field<float>, unconsciousTime)
+    BNMU_DefineField(BNM::Field<float>, fallTimer)
+    BNMU_DefineField(BNM::Field<float>, groundDelay)
+    BNMU_DefineField(BNM::Field<float>, jumpDelay)
+    BNMU_DefineField(BNM::Field<float>, slideTimer)
     BNMU_DefineField(BNM::Field<bool>, jump)
     BNMU_DefineField(BNM::Field<bool>, onGround)
 BNMU_EndDefineClass()
@@ -138,6 +159,22 @@ BNMU_BeginDefineClass(NetGame, "Multiplayer", NetGame)
     BNMU_DefineField(BNM::Field<bool>, isClient)
 BNMU_EndDefineClass()
 
+BNMU_BeginDefineClass(NetScope, "Multiplayer", NetScope)
+    BNMU_DefineField(BNM::Field<BNM::Structures::Mono::List<void *> *>, list)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(NetIdentity, "Multiplayer", NetIdentity)
+    BNMU_DefineMethod(BNM::Method<void>, CollectState, 1)
+    BNMU_DefineMethod(BNM::Method<void>, ApplyState, 1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(NetStream, "Multiplayer", NetStream)
+    BNMU_DefineField(BNM::Field<Mono::Array<std::byte> *>, buffer)
+    BNMU_DefineMethod(BNM::Method<void *>, AllocStream, 1)
+    BNMU_DefineMethodName(BNM::Method<void *>, AllocStreamBytes, AllocStream, 5)
+    BNMU_DefineMethod(BNM::Method<void>, Seek, 1)
+BNMU_EndDefineClass()
+
 BNMU_BeginDefineClass(UnityEngine::Object, "UnityEngine", Object)
     BNMU_DefineMethod(BNM::MethodBase, FindObjectsOfType, 0)
 BNMU_EndDefineClass()
@@ -157,7 +194,7 @@ BNMU_BeginDefineClass(UnityEngine::GameObject, "UnityEngine", GameObject)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(UnityEngine::MonoBehaviour, "UnityEngine", MonoBehaviour)
-    BNMU_DefineMethod(BNM::Method<void *>, StartCoroutine, {"routine"})
+    BNMU_DefineMethod(BNM::Method<BNM::Coroutine::IEnumerator *>, StartCoroutine, {"routine"})
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(UnityEngine::Screen, "UnityEngine", Screen)

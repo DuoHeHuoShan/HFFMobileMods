@@ -9,6 +9,22 @@ enum class SpeedrunMode {
     NoCheckPoint,
     Checkpoint
 };
+struct PlayerState {
+    bool valid = false;
+    int level;
+    int checkpointNumber;
+    int subObjectives;
+    HumanState state;
+    float unconsciousTime;
+    float cameraPitchAngle;
+    float cameraYawAngle;
+    float fallTimer;
+    float groundDelay;
+    float jumpDelay;
+    float slideTimer;
+    void *netStream;
+    uint32_t gchandle = 0;
+};
 enum class TimerStyle {
     Solid,
     Gradient
@@ -18,9 +34,11 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
     BNM_CustomClass(HFFTimer, BNM::CompileTimeClassBuilder(nullptr, "HFFTimer").Build(), BNM::CompileTimeClassBuilder("UnityEngine", "MonoBehaviour", "UnityEngine.CoreModule").Build(), {});
     static HFFTimer *instance;
     bool timerWindowOpened = false;
+
     bool enableTimer = false;
     bool autoReset = true;
     bool timeOnPause = true;
+
     bool enableRestart = false;
     int restartLevel = 0;
     bool enableRestartButton = false;
@@ -40,6 +58,11 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
     float prevGameTime = 0;
     float prevLevelGameTime = 0;
     float ssTime = 0;
+
+    bool enablePractice = false;
+    PlayerState practicePlayerState;
+    bool practiceResetObjects = true;
+    char practiceSaveStatePath[100] = "";
 
     void Constructor();
     static std::string FormatTime(float time);

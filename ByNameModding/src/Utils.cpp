@@ -143,3 +143,11 @@ void BNM::DetachIl2Cpp() {
     if (!thread) return;
     Internal::il2cppMethods.il2cpp_thread_detach(thread);
 }
+
+uint32_t BNM::NewGCHandle(void *obj, bool pinned) {
+    return Internal::il2cppMethods.il2cpp_gchandle_new(obj, pinned);
+}
+
+void BNM::FreeGCHandle(uint32_t gchandle) {
+    Internal::il2cppMethods.il2cpp_gchandle_free(gchandle);
+}

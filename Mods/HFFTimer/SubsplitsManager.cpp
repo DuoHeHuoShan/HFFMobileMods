@@ -11,6 +11,13 @@ void SubsplitsManager::Init() {
     BNM::VirtualHook(Game::clazz, Game::Fall, new_Fall, old_Fall);
 }
 
+void SubsplitsManager::Reset() {
+    for(auto subsplit : subsplitConfig.contains(currentLevel) ? subsplitConfig[currentLevel] : subsplitConfig[static_cast<uint64_t>(LevelNumbers::Default)]) {
+        subsplit->Reset();
+        subsplit->Start();
+    }
+}
+
 void SubsplitsManager::Update() {
     if(!Game::instance.Get()->Alive()) return;
     if(Game::currentLevelNumber[Game::instance].Get() != currentLevel) {
