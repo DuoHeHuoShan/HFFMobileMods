@@ -86,7 +86,7 @@ public:
     GetUpSubsplit(std::string_view label) : Subsplit(label, {}) {}
     GetUpSubsplit(std::string_view label, std::initializer_list<SpeedrunMode> supportModes) : Subsplit(label, supportModes) {}
     void Update() {
-        if(!HFFTimer::instance->enablePractice && Human::state[Human::Localplayer] != HumanState::Unconscious && Human::state[Human::Localplayer] != HumanState::Spawning) Trigger();
+        if(Human::state[Human::Localplayer] != HumanState::Unconscious && Human::state[Human::Localplayer] != HumanState::Spawning) Trigger();
     }
 };
 

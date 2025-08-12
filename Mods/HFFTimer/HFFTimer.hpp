@@ -2,32 +2,20 @@
 
 #include "imgui.h"
 #include "Classes.hpp"
+#include <unordered_map>
 #include <BNM/ClassesManagement.hpp>
 
 enum class SpeedrunMode {
     Any,
-    NoCheckPoint,
     Checkpoint
-};
-struct PlayerState {
-    bool valid = false;
-    int level;
-    int checkpointNumber;
-    int subObjectives;
-    HumanState state;
-    float unconsciousTime;
-    float cameraPitchAngle;
-    float cameraYawAngle;
-    float fallTimer;
-    float groundDelay;
-    float jumpDelay;
-    float slideTimer;
-    void *netStream;
-    uint32_t gchandle = 0;
 };
 enum class TimerStyle {
     Solid,
     Gradient
+};
+enum class TimerLayout {
+    Common,
+    Simple
 };
 
 struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
@@ -38,31 +26,37 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
     bool enableTimer = false;
     bool autoReset = true;
     bool timeOnPause = true;
+    bool displaySubsplits = true;
+    bool displayRealtime = false;
 
-    bool enableRestart = false;
+    bool overriveRestartLevel = false;
     int restartLevel = 0;
     bool enableRestartButton = false;
     bool restartButtonDraggable = false;
     ImVec2 restartButtonPos = {-1, -1};
-    bool displaySubsplits = true;
     SpeedrunMode mode = SpeedrunMode::Any;
+    bool glitchless = false;
+    bool displayWaterGlitch = false;
+    bool displayAttempts = false;
+    std::unordered_map<unsigned long long, int> attempts;
     std::string invalidText;
 
     TimerStyle timerStyle = TimerStyle::Solid;
     ImColor timerColor = ImColor(255, 0, 255);
     ImColor timerColorGradient1 = ImColor(255, 0, 255);
     ImColor timerColorGradient2 = ImColor(255, 0, 255);
+    TimerLayout timerLayout = TimerLayout::Common;
+    bool subsplitsOnRight = false;
+
     GameState prevGameState = GameState::Inactive;
     AppState prevAppState = AppState::Startup;
     float gameTime = 0;
     float prevGameTime = 0;
     float prevLevelGameTime = 0;
     float ssTime = 0;
-
-    bool enablePractice = false;
-    PlayerState practicePlayerState;
-    bool practiceResetObjects = true;
-    char practiceSaveStatePath[100] = "";
+    float startRealtime = 0;
+    float prevRealtime = 0;
+    bool restarting = true;
 
     void Constructor();
     static std::string FormatTime(float time);

@@ -20,19 +20,16 @@
 
 using namespace mINI;
 
-const char *modesStr[] = { "Any%",  "No CP%", "CP%" };
+const char *modesStr[] = { "Any%", "CP%" };
 const char *timerStylesStr[] = { "纯色", "渐变" };
+const char *timerLayoutsStr[] = { "普通", "简洁" };
 BNM::Field<AppState> appStateField; // For ImGui thread
 
 INIFile *configFile;
 INIStructure configIni;
 bool dirty = false;
-std::string GetWorkDir();
 void WriteConfig();
-void SavePlayerStateToFile(const char *filePath, const PlayerState &state);
-void ReadPlayerStateFromFile(const char *filePath, PlayerState &state);
-BNM::Coroutine::IEnumerator LoadPlayerState(const PlayerState &state, bool resetObjects);
-BNM::Coroutine::IEnumerator SavePlayerState(PlayerState &state);
+BNM::Coroutine::IEnumerator Restart(int level);
 
 ImVec2 ReadImVec2(const std::string &format) {
     ImVec2 vec;
@@ -72,6 +69,8 @@ void HFFTimer::Constructor() {
     if(configIni["Custom"].has("timerColor")) timerColor = ReadImColor(configIni["Custom"]["timerColor"]);
     if(configIni["Custom"].has("timerColorGradient1")) timerColorGradient1 = ReadImColor(configIni["Custom"]["timerColorGradient1"]);
     if(configIni["Custom"].has("timerColorGradient2")) timerColorGradient2 = ReadImColor(configIni["Custom"]["timerColorGradient2"]);
+    if(configIni["Custom"].has("timerLayout")) timerLayout = (TimerLayout) std::stoi(configIni["Custom"]["timerLayout"]);
+    if(configIni["Custom"].has("subsplitsOnRight")) subsplitsOnRight = std::stoi(configIni["Custom"]["subsplitsOnRight"]);
     ImGuiManager::AddOnGuiCallback(std::bind(&HFFTimer::OnGUI, this));
 }
 
@@ -90,18 +89,37 @@ std::string HFFTimer::FormatTime(float time) {
 
 std::string HFFTimer::GetTimeText() {
     std::stringstream stringStream;
-    stringStream << "总时间: " << FormatTime(gameTime) << std::endl;
-    stringStream << "单关: " << FormatTime(ssTime) << std::endl;
-    stringStream << "上关总时间: " << FormatTime(prevGameTime) << std::endl;
-    stringStream << "上次: " << FormatTime(prevLevelGameTime) << std::endl;
+    if(timerLayout == TimerLayout::Common) {
+        stringStream << "总时间: " << FormatTime(gameTime) << std::endl;
+        stringStream << "单关: " << FormatTime(ssTime) << std::endl;
+        if(displayRealtime) stringStream << "上关实时时间: " << FormatTime(prevRealtime) << std::endl;
+        stringStream << "上关总时间: " << FormatTime(prevGameTime) << std::endl;
+        stringStream << "上次: " << FormatTime(prevLevelGameTime) << std::endl;
+    } else if(timerLayout == TimerLayout::Simple) {
+        stringStream << "GT: " << FormatTime(gameTime) << std::endl;
+        stringStream << "SS: " << FormatTime(ssTime) << std::endl;
+        if(displayRealtime) stringStream << "Prev RT: " << FormatTime(prevRealtime) << std::endl;
+        stringStream << "Prev GT: " << FormatTime(prevGameTime) << std::endl;
+        stringStream << "Prev: " << FormatTime(prevLevelGameTime) << std::endl;
+    }
     return stringStream.str();
 }
 
 std::string HFFTimer::GetSpeedrunText() {
     std::stringstream stringStream;
-    stringStream << "项目: " << modesStr[int(mode)] << std::endl;
-    if(mode == SpeedrunMode::Checkpoint)
-        stringStream << "存档: " << Game::currentCheckpointNumber[Game::instance].Get() << std::endl;
+    if(timerLayout == TimerLayout::Common) {
+        stringStream << "项目: " << modesStr[int(mode)];
+        if(glitchless) stringStream << " GL";
+        stringStream << std::endl;
+        if(mode == SpeedrunMode::Checkpoint)
+            stringStream << "存档: " << Game::currentCheckpointNumber[Game::instance].Get() << std::endl;
+    } else if(timerLayout == TimerLayout::Simple) {
+        stringStream << "Mode: " << modesStr[int(mode)];
+        if(glitchless) stringStream << " GL";
+        stringStream << std::endl;
+        if(mode == SpeedrunMode::Checkpoint)
+            stringStream << "CP: " << Game::currentCheckpointNumber[Game::instance].Get() << std::endl;
+    }
     return stringStream.str();
 }
 
@@ -121,7 +139,7 @@ bool HFFTimer::ShouldToggleMenu() {
 
 void HFFTimer::Reset() {
     invalidText = "";
-    gameTime = HFFTimer::instance->prevGameTime = 0;
+    gameTime = prevRealtime = prevGameTime = 0;
     SharedData::InvokeCallback<void()>("HFFTimer::OnReset");
 }
 
@@ -132,8 +150,11 @@ void HFFTimer::Update() {
     static int oldCpNumber = 0;
     if(ShouldToggleMenu()) timerWindowOpened = !timerWindowOpened;
     if(!Game::instance.Get()->Alive()) return;
-    if(autoReset && ((prevAppState == AppState::PlayLevel && App::state == AppState::Menu) || (prevAppState == AppState::ServerLoadLobby && App::state == AppState::ServerLobby) || (prevAppState == AppState::ClientLoadLobby && App::state == AppState::ClientLobby))) Reset();
-    if(Game::state[Game::instance] == GameState::PlayingLevel) {
+    if(autoReset && ((prevAppState == AppState::PlayLevel && App::state == AppState::Menu) || (prevAppState == AppState::ServerLoadLobby && App::state == AppState::ServerLobby) || (prevAppState == AppState::ClientLoadLobby && App::state == AppState::ClientLobby))) {
+        restarting = true;
+        Reset();
+    }
+    if(Game::state[Game::instance] == GameState::PlayingLevel && App::state != AppState::ClientWaitServerLoad) {
         gameTime += Time::deltaTime;
         ssTime = gameTime - prevGameTime;
     }
@@ -142,18 +163,20 @@ void HFFTimer::Update() {
         ssTime = gameTime - prevGameTime;
     }
     if(prevGameState == GameState::PlayingLevel && Game::state[Game::instance] == GameState::LoadingLevel) {
-        gameTime += Time::deltaTime; // 增加通关到前一帧的时间
         ssTime = gameTime - prevGameTime;
         prevLevelGameTime = gameTime - prevGameTime;
         prevGameTime = gameTime;
+        prevRealtime = Time::realtimeSinceStartup - startRealtime;
     }
     if((prevGameState == GameState::LoadingLevel || prevGameState == GameState::Inactive) && Game::state[Game::instance] == GameState::PlayingLevel) {
+        if(restarting) {
+            ++attempts[Game::currentLevelNumber[Game::instance]];
+            startRealtime = Time::realtimeSinceStartup;
+        }
+        restarting = false;
         oldCpNumber = 0;
     } else if(oldCpNumber != Game::currentCheckpointNumber[Game::instance]) {
         int currentCheckpointNumber = Game::currentCheckpointNumber[Game::instance];
-        if(mode == SpeedrunMode::NoCheckPoint) {
-            invalidText = "无效: 存档";
-        }
         if(mode == SpeedrunMode::Checkpoint && currentCheckpointNumber - oldCpNumber > 1) {
             switch (Game::currentLevelNumber[Game::instance]) {
                 case 9:
@@ -173,6 +196,11 @@ void HFFTimer::Update() {
         }
         oldCpNumber = Game::currentCheckpointNumber[Game::instance];
     }
+    if(glitchless) {
+        auto leftHand = HumanSegment::sensor[Ragdoll::partLeftHand[Human::ragdoll[Human::Localplayer]]].Get();
+        auto rightHand = HumanSegment::sensor[Ragdoll::partRightHand[Human::ragdoll[Human::Localplayer]]].Get();
+        if(Human::onGround[Human::Localplayer] && !CollisionSensor::grabJoint[leftHand].Get()->Alive() && !CollisionSensor::grabJoint[rightHand].Get()->Alive() && (CollisionSensor::grabObject[leftHand].Get()->Alive() || CollisionSensor::grabObject[rightHand].Get()->Alive())) invalidText = "无效: 半身";
+    }
     prevGameState = Game::state[Game::instance];
     prevAppState = App::state;
     SubsplitsManager::Update();
@@ -186,7 +214,7 @@ void HFFTimer::Update() {
 void HFFTimer::OnGUI() {
     using namespace Multiplayer;
     ImGuiIO &io = ImGui::GetIO();
-    if(enableRestartButton || enablePractice) {
+    if(enableRestartButton) {
         ImGuiWindowFlags button_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoBackground;
         if(!restartButtonDraggable) {
             button_flags |= ImGuiWindowFlags_NoMove;
@@ -201,32 +229,11 @@ void HFFTimer::OnGUI() {
             dirty = true;
         }
         ImGui::BeginChild("RestartButton", ImVec2(80, 80), ImGuiChildFlags_None, restartButtonDraggable ? ImGuiWindowFlags_NoInputs : ImGuiWindowFlags_None);
-        static float restartButtonHoldTime = 0;
-        static bool restartButtonLongPressed = false;
-        if(ImGui::Button(enablePractice ? "E" : "R", ImVec2(80, 80)) && appStateField != AppState::LoadLevel && (enableRestart || enablePractice || Game::state[Game::instance] == GameState::PlayingLevel) && !restartButtonLongPressed) {
+        if(ImGui::Button("R", ImVec2(80, 80)) && appStateField != AppState::LoadLevel) {
             if(BNM::AttachIl2Cpp()) {
-                if (!enablePractice) {
-                    Game::RestartLevel[Game::instance](true);
-                } else if(practicePlayerState.valid) {
-                    UnityEngine::MonoBehaviour::StartCoroutine[Game::instance](LoadPlayerState(practicePlayerState, practiceResetObjects).get());
-                    Reset();
-                    SubsplitsManager::Reset();
-                }
+                UnityEngine::MonoBehaviour::StartCoroutine[Game::instance](Restart(HFFTimer::instance->restartLevel).get());
                 BNM::DetachIl2Cpp();
             }
-        }
-        if(ImGui::IsItemActive()) {
-            restartButtonHoldTime += io.DeltaTime;
-            if(restartButtonHoldTime >= 0.5f && !restartButtonLongPressed) {
-                restartButtonLongPressed = true;
-                if(enablePractice && BNM::AttachIl2Cpp()) {
-                    UnityEngine::MonoBehaviour::StartCoroutine[Game::instance](SavePlayerState(practicePlayerState).get());
-                    BNM::DetachIl2Cpp();
-                }
-            }
-        } else {
-            restartButtonHoldTime = 0;
-            restartButtonLongPressed = false;
         }
         ImGui::EndChild();
         ImGui::End();
@@ -256,15 +263,15 @@ void HFFTimer::OnGUI() {
             auto drawList = ImGui::GetWindowDrawList();
             int vtxStart = drawList->VtxBuffer.size();
             ImGui::TextColored(ImColor(255, 255, 255), "%s", GetSpeedrunText().c_str());
-            if(enablePractice) ImGui::TextColored(ImColor(255, 255, 255), "%s", "练习模式");
             int vtxEnd = drawList->VtxBuffer.size();
             ImGui::ShadeVertsLinearColorGradientKeepAlpha(ImGui::GetWindowDrawList(), vtxStart, vtxEnd, ImVec2(200, 0), ImVec2(390, 120), timerColorGradient1, timerColorGradient2);
         }
+        if(displayWaterGlitch && !glitchless && Game::currentLevelNumber[Game::instance] == 6 && Game::passedLevel[Game::instance]) ImGui::TextColored(ImColor(0, 255, 0), "%s", "已踩点");
         ImGui::TextColored(ImColor(255, 0, 0), "%s", invalidText.c_str());
         ImGui::End();
 
         if(displaySubsplits) {
-            ImGui::SetNextWindowPos(ImVec2(390, 0));
+            ImGui::SetNextWindowPos(ImVec2(subsplitsOnRight ? io.DisplaySize.x - 190 : 390, 0));
             ImGui::Begin("SubsplitsText", nullptr, timer_flags);
             if(timerStyle == TimerStyle::Solid) {
                 ImGui::TextColored(timerColor, "%s", SubsplitsManager::GetSubsplitsText().c_str());
@@ -274,7 +281,7 @@ void HFFTimer::OnGUI() {
                 int vtxStart = drawList->VtxBuffer.size();
                 ImGui::TextColored(ImColor(255, 255, 255), "%s", SubsplitsManager::GetSubsplitsText().c_str());
                 int vtxEnd = drawList->VtxBuffer.size();
-                ImGui::ShadeVertsLinearColorGradientKeepAlpha(ImGui::GetWindowDrawList(), vtxStart, vtxEnd, ImVec2(390, 0), ImVec2(580, 120), timerColorGradient1, timerColorGradient2);
+                ImGui::ShadeVertsLinearColorGradientKeepAlpha(ImGui::GetWindowDrawList(), vtxStart, vtxEnd, ImVec2(subsplitsOnRight ? io.DisplaySize.x - 190 : 390, 0), ImVec2(subsplitsOnRight ? io.DisplaySize.x : 580, 120), timerColorGradient1, timerColorGradient2);
             }
             ImGui::End();
         }
@@ -282,50 +289,41 @@ void HFFTimer::OnGUI() {
     if(!timerWindowOpened) return;
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2, io.DisplaySize.y / 2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_Once);
-    if(ImGui::Begin("HFF手游计时器v0.0.6a1")) {
+    if(ImGui::Begin("HFF手游计时器v0.0.6b")) {
         if(ImGui::BeginTabBar("TimerTabBar")) {
             if(ImGui::BeginTabItem("计时")) {
                 ImGui::Checkbox("启用计时器", &enableTimer);
                 ImGui::Checkbox("自动重置", &autoReset);
                 ImGui::Checkbox("暂停时计时", &timeOnPause);
+                ImGui::Checkbox("显示分段", &displaySubsplits);
+                ImGui::Checkbox("显示实时时间", &displayRealtime);
                 ImGui::EndTabItem();
             }
             if(ImGui::BeginTabItem("速通")) {
                 ImGui::Combo("项目", (int *) &mode, modesStr, IM_ARRAYSIZE(modesStr));
-                ImGui::Checkbox("启用重开", &enableRestart);
+                ImGui::Checkbox("Glitchless", &glitchless);
+                ImGui::Checkbox("覆盖重新开始", &overriveRestartLevel);
                 ImGui::InputInt("重开关卡", &restartLevel);
                 if(ImGui::Button("设为当前关卡")) {
                     restartLevel = Game::currentLevelNumber[Game::instance];
                 }
                 ImGui::Checkbox("启用重开按钮", &enableRestartButton);
                 ImGui::Checkbox("移动重开按钮位置", &restartButtonDraggable);
-                ImGui::Checkbox("显示分段", &displaySubsplits);
-                ImGui::EndTabItem();
-            }
-            if(ImGui::BeginTabItem("练习")) {
-                if(ImGui::Checkbox("启用练习", &enablePractice)) {
-                    Reset();
-                    SubsplitsManager::Reset();
-                }
-                ImGui::Checkbox("重置物体", &practiceResetObjects);
-                ImGui::InputText("存档路径", practiceSaveStatePath, IM_ARRAYSIZE(practiceSaveStatePath));
-                if(ImGui::Button("保存存档")) {
-                    SavePlayerStateToFile((GetWorkDir() + "/" + practiceSaveStatePath).c_str(), practicePlayerState);
-                }
-                ImGui::SameLine();
-                if(ImGui::Button("读取存档") && BNM::AttachIl2Cpp()) {
-                    ReadPlayerStateFromFile((GetWorkDir() + "/" + practiceSaveStatePath).c_str(), practicePlayerState);
-                    BNM::DetachIl2Cpp();
-                }
-                if(practicePlayerState.valid) {
-                    ImGui::Text("存档关卡: %d", practicePlayerState.level);
-                    ImGui::Text("存档检查点: %d", practicePlayerState.checkpointNumber);
-                }
+                ImGui::Checkbox("显示重开数", &displayAttempts);
+                ImGui::Checkbox("水踩点显示 (仅比赛使用)", &displayWaterGlitch);
                 ImGui::EndTabItem();
             }
             if(ImGui::BeginTabItem("定制")) {
+                if(ImGui::Combo("计时器布局", (int *) &timerLayout, timerLayoutsStr, IM_ARRAYSIZE(timerLayoutsStr))) {
+                    configIni["Custom"]["timerLayout"] = std::to_string(int(timerLayout));
+                    dirty = true;
+                }
                 if(ImGui::Combo("计时器样式", (int *) &timerStyle, timerStylesStr, IM_ARRAYSIZE(timerStylesStr))) {
                     configIni["Custom"]["timerStyle"] = std::to_string(int(timerStyle));
+                    dirty = true;
+                }
+                if(ImGui::Checkbox("右侧显示分段", &subsplitsOnRight)) {
+                    configIni["Custom"]["subsplitsOnRight"] = std::to_string(subsplitsOnRight);
                     dirty = true;
                 }
                 if(timerStyle == TimerStyle::Solid) {
@@ -356,7 +354,9 @@ HFFTimer *HFFTimer::instance;
 
 BNM::Coroutine::IEnumerator Restart(int level) {
     using namespace Multiplayer;
+    if(Game::state[Game::instance] == GameState::Paused) Game::Resume[Game::instance]();
     if(NetGame::isLocal) {
+        HFFTimer::instance->restarting = true;
         Game::state[Game::instance] = GameState::Paused;
         co_yield BNM::Coroutine::WaitForFixedUpdate();
         App::PauseLeave[App::instance](false);
@@ -365,109 +365,28 @@ BNM::Coroutine::IEnumerator Restart(int level) {
                 (unsigned long long) level, 0, 0);
         HFFTimer::instance->Reset();
     } else if(NetGame::isServer) {
+        HFFTimer::instance->restarting = true;
         Game::state[Game::instance] = GameState::Paused;
         co_yield BNM::Coroutine::WaitForFixedUpdate();
         Game::state[Game::instance] = GameState::Inactive;
+        if(Game::currentLevelNumber[Game::instance] == level) {
+            HFFTimer::instance->restarting = false;
+            HFFTimer::instance->startRealtime = UnityEngine::Time::realtimeSinceStartup;
+            ++HFFTimer::instance->attempts[level];
+        }
         App::NextLevelServer[App::instance](level, 0);
         HFFTimer::instance->Reset();
     }
     co_return;
 }
 
-void SavePlayerStateToFile(const char *filePath, const PlayerState &state) {
-    if(!state.valid) return;
-    FILE *fp = fopen(filePath, "w");
-    if(!fp) return;
-    fwrite(&state, sizeof(PlayerState) - sizeof(PlayerState::gchandle) - sizeof(PlayerState::netStream), 1, fp);
-    Mono::Array<std::byte> *buffer = NetStream::buffer[state.netStream];
-    auto size = buffer->capacity;
-    fwrite(&size, sizeof(size), 1, fp);
-    fwrite(buffer->GetData(), size, 1, fp);
-    fclose(fp);
-}
-
-void ReadPlayerStateFromFile(const char *filePath, PlayerState &state) {
-    FILE *fp = fopen(filePath, "r");
-    if(!fp) return;
-    fread(&state, sizeof(PlayerState) - sizeof(PlayerState::gchandle) - sizeof(PlayerState::netStream), 1, fp);
-    BNM::IL2CPP::il2cpp_array_size_t size;
-    fread(&size, sizeof(size), 1, fp);
-    auto *buffer = new std::byte[size];
-    fread(buffer, size, 1, fp);
-    auto *nBuffer = Mono::Array<std::byte>::Create(buffer, size);
-    delete[] buffer;
-    state.netStream = NetStream::AllocStreamBytes(nBuffer, -1, 0, false, false);
-    state.gchandle = BNM::NewGCHandle(state.netStream, true);
-    fclose(fp);
-}
-
-BNM::Coroutine::IEnumerator LoadPlayerState(const PlayerState &state, bool resetObjects) {
-    if(!state.valid) co_return;
-    if(Game::currentLevelNumber[Game::instance] != state.level) {
-        resetObjects = false;
-        co_yield UnityEngine::MonoBehaviour::StartCoroutine[Game::instance](
-                Restart(state.level).get());
-        co_yield BNM::Coroutine::WaitUntil([state]() {
-            return Game::currentLevelNumber[Game::instance] == state.level && HFFTimer::instance->enablePractice;
-        });
-    }
-    auto localPlayer = Human::Localplayer.Get();
-    auto controls = Human::controls[localPlayer].Get();
-    auto identities = NetScope::list[Human::player[localPlayer]].Get()->ToVector();
-    NetStream::Seek[state.netStream](0);
-    for(void *identity : identities) {
-        NetIdentity::ApplyState[identity](state.netStream);
-    }
-    Human::state[localPlayer] = state.state;
-    Human::unconsciousTime[localPlayer] = state.unconsciousTime;
-    Human::fallTimer[localPlayer] = state.fallTimer;
-    Human::groundDelay[localPlayer] = state.groundDelay;
-    Human::jumpDelay[localPlayer] = state.jumpDelay;
-    Human::slideTimer[localPlayer] = state.slideTimer;
-    HumanControls::cameraPitchAngle[controls] = state.cameraPitchAngle;
-    HumanControls::cameraYawAngle[controls] = state.cameraYawAngle;
-    Game::currentCheckpointNumber[Game::instance] = state.checkpointNumber;
-    Game::currentCheckpointSubObjectives[Game::instance] = state.subObjectives;
-    if(resetObjects) {
-        using namespace HumanAPI;
-        SignalManager::BeginReset();
-        Level::Reset[Game::currentLevel](state.checkpointNumber, state.subObjectives);
-        SignalManager::EndReset();
-    }
-    co_return;
-}
-
-BNM::Coroutine::IEnumerator SavePlayerState(PlayerState &state) {
-    if(Game::currentLevelNumber[Game::instance] == -1) co_return;
-    auto localPlayer = Human::Localplayer.Get();
-    auto controls = Human::controls[localPlayer].Get();
-    auto identities = NetScope::list[Human::player[localPlayer]].Get()->ToVector();
-    if(state.gchandle) BNM::FreeGCHandle(state.gchandle);
-    state.valid = true;
-    state.level = Game::currentLevelNumber[Game::instance];
-    state.checkpointNumber = Game::currentCheckpointNumber[Game::instance];
-    state.subObjectives = Game::currentCheckpointSubObjectives[Game::instance];
-    state.netStream = NetStream::AllocStream(0);
-    state.gchandle = BNM::NewGCHandle(state.netStream, true);
-    state.state = Human::state[localPlayer];
-    state.unconsciousTime = Human::unconsciousTime[localPlayer];
-    state.fallTimer = Human::fallTimer[localPlayer];
-    state.groundDelay = Human::groundDelay[localPlayer];
-    state.jumpDelay = Human::jumpDelay[localPlayer];
-    state.slideTimer = Human::slideTimer[localPlayer];
-    state.cameraPitchAngle = HumanControls::cameraPitchAngle[controls];
-    state.cameraYawAngle = HumanControls::cameraYawAngle[controls];
-    for(void *identity : identities) {
-        NetIdentity::CollectState[identity](state.netStream);
-    }
-    co_return;
-}
-
 static void (*old_RestartLevel)(BNM::UnityEngine::Object *, bool);
 static void RestartLevel(BNM::UnityEngine::Object *instance, bool reset) {
-    if(HFFTimer::instance->enableRestart) {
+    if(HFFTimer::instance->overriveRestartLevel) {
         UnityEngine::MonoBehaviour::StartCoroutine[instance](Restart(HFFTimer::instance->restartLevel).get());
         return;
+    } else if(HFFTimer::instance->mode == SpeedrunMode::Checkpoint) {
+        HFFTimer::instance->invalidText = "";
     }
     old_RestartLevel(instance, reset);
 }
