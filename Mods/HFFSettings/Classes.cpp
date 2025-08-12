@@ -64,10 +64,6 @@ BNMU_BeginDefineClass(Options, "", Options)
     BNMU_DefineMethod(BNM::Method<void>, ApplyAdvancedVideo, -1)
 BNMU_EndDefineClass()
 
-BNMU_BeginDefineClass(Ball, "", Ball)
-    BNMU_DefineMethod(BNM::MethodBase, OnEnable, -1)
-BNMU_EndDefineClass()
-
 BNMU_BeginDefineClass(UnityEngine::Component, "UnityEngine", Component)
     BNMU_DefineProperty(BNM::Property<BNM::UnityEngine::Object *>, gameObject)
 BNMU_EndDefineClass()
@@ -83,7 +79,6 @@ BNMU_BeginDefineClass(UnityEngine::GameObject, "UnityEngine", GameObject)
     BNMU_DefineProperty(BNM::Property<void *>, transform)
     BNMU_DefineMethod(BNM::Method<BNM::UnityEngine::Object *>, Find, -1)
     BNMU_DefineMethod(BNM::Method<BNM::UnityEngine::Object *>, CreatePrimitive, -1)
-    BNMU_DefineMethod(BNM::Method<void>, SetActive, -1)
     BNMU_DefineMethod(BNM::Method<void>, AddComponent, 1)
     BNMU_DefineMethod(BNM::Method<BNM::UnityEngine::Object *>, GetComponent, 1)
 BNMU_EndDefineClass()
@@ -111,26 +106,7 @@ BNMU_BeginDefineClass(UnityEngine::QualitySettings, "UnityEngine", QualitySettin
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(MobileControlScale, "", MobileControlScale)
-    BNMU_DefineMethod(BNM::MethodBase, Start, -1)
     BNMU_DefineMethod(BNM::MethodBase, ScaleControls, -1)
-    BNMU_DefineField(BNM::Field<BNM::UnityEngine::Object *>, TouchStick)
-BNMU_EndDefineClass()
-
-BNMU_BeginDefineClass(MobileControlSchemeManager, "", MobileControlSchemeManager)
-    BNMU_DefineMethod(BNM::MethodBase, get_OverridesBodyPitchControls, -1)
-    BNMU_DefineProperty(BNM::Property<float>, LeftArmExtendValue)
-    BNMU_DefineProperty(BNM::Property<float>, RightArmExtendValue)
-BNMU_EndDefineClass()
-
-enum SnapAngles {
-    None = 0,
-    Four = 4,
-    Eight = 8,
-    Sixteen = 16
-};
-
-BNMU_BeginDefineClass(InControl::TouchStickControl, "InControl", TouchStickControl)
-    BNMU_DefineField(BNM::Field<SnapAngles>, snapAngles)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(TriggerOnQuickSwipe, "", TriggerOnQuickSwipe)
@@ -150,6 +126,7 @@ BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(UnityEngine::Time, "UnityEngine", Time)
     BNMU_DefineProperty(BNM::Property<float>, unscaledDeltaTime)
+    BNMU_DefineProperty(BNM::Property<float>, deltaTime)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(UnityEngine::Material, "UnityEngine", Material)
@@ -197,4 +174,12 @@ BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(FreeRoamCam, "", FreeRoamCam)
     BNMU_DefineMethod(BNM::MethodBase, OnEnable, -1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(AsyncOperation, "UnityEngine", AsyncOperation)
+    BNMU_DefineMethod(BNM::MethodBase, get_isDone, -1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(Resources, "UnityEngine", Resources)
+    BNMU_DefineMethod(BNM::MethodBase, UnloadUnusedAssets, -1)
 BNMU_EndDefineClass()

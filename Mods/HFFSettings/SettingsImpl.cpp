@@ -3,6 +3,7 @@
 BNM::UnityEngine::Object *triggerMaterial;
 bool triggerOnceF8 = false;
 bool triggerOnceF6 = false;
+void *tmpObject;
 
 std::vector<BNM::UnityEngine::Object *> CreateHitboxesInComponents(std::vector<void *> components, BNM::Structures::Unity::Color color) {
     using namespace UnityEngine;
@@ -53,13 +54,6 @@ void BiggerButtonSetting::OnLoaded(bool value) {
     if(value) HOOK(MobileControlScale::ScaleControls, &new_ScaleControls, nullptr);
 }
 
-void (*old_Ball_OnEnable)(BNM::UnityEngine::Object *);
-void new_Ball_OnEnable(BNM::UnityEngine::Object *thiz) {
-    old_Ball_OnEnable(thiz);
-    VisibleBallSetting::instance->ballObject = UnityEngine::GameObject::Find(BNM::CreateMonoString("/Player(Clone)/Ball/Sphere"));
-    UnityEngine::GameObject::SetActive[VisibleBallSetting::instance->ballObject](VisibleBallSetting::instance->GetValue());
-}
-
 bool (*old_GetTriggerState)(void *thiz, BNM::Structures::Unity::Vector3);
 bool new_GetTriggerState(void *thiz, BNM::Structures::Unity::Vector3 newStickMovement) {
     if(DontJumpOnQuickSwipeSetting::instance->GetValue()) return false;
@@ -68,51 +62,6 @@ bool new_GetTriggerState(void *thiz, BNM::Structures::Unity::Vector3 newStickMov
 
 void DontJumpOnQuickSwipeSetting::OnLoaded(bool value) {
     HOOK(TriggerOnQuickSwipe::GetTriggerState, new_GetTriggerState, old_GetTriggerState);
-}
-
-void VisibleBallSetting::OnLoaded(bool value) {
-    InvokeHook(Ball::OnEnable, new_Ball_OnEnable, old_Ball_OnEnable);
-}
-
-BNM::Structures::Unity::Vector3 (*old_HumanControls_get_calc_joyWalk)(BNM::UnityEngine::Object *);
-BNM::Structures::Unity::Vector3 new_HumanControls_get_calc_joyWalk(BNM::UnityEngine::Object *thiz) {
-    BNM::Structures::Unity::Vector3 ret = old_HumanControls_get_calc_joyWalk(thiz);
-    if(!PseudoPCSetting::instance->GetValue()) return ret;
-    ret.x = round(ret.x);
-    ret.z = round(ret.z);
-    return ret;
-}
-
-void (*old_MobileControlScale_Start)(BNM::UnityEngine::Object *);
-void new_MobileControlScale_Start(BNM::UnityEngine::Object *thiz) {
-    old_MobileControlScale_Start(thiz);
-    BNM::UnityEngine::Object *touchStick = MobileControlScale::TouchStick[thiz];
-    if(touchStick) {
-        PseudoPCSetting::instance->touchStick = touchStick;
-        if(PseudoPCSetting::instance->GetValue()) InControl::TouchStickControl::snapAngles[touchStick] = SnapAngles::Eight;
-    }
-}
-
-bool (*old_OverridesBodyPitchControls)(BNM::UnityEngine::Object *);
-bool new_OverridesBodyPitchControls(BNM::UnityEngine::Object *thiz) {
-    if(!PseudoPCSetting::instance->GetValue()) return old_OverridesBodyPitchControls(thiz);
-    return MobileControlSchemeManager::LeftArmExtendValue[thiz] != 0 || MobileControlSchemeManager::RightArmExtendValue[thiz] != 0;
-}
-
-void PseudoPCSetting::OnLoaded(bool value) {
-    InvokeHook(MobileControlScale::Start, new_MobileControlScale_Start, old_MobileControlScale_Start);
-    HOOK((BNM::MethodBase) HumanControls::get_calc_joyWalk, new_HumanControls_get_calc_joyWalk,
-         old_HumanControls_get_calc_joyWalk);
-    HOOK(MobileControlSchemeManager::get_OverridesBodyPitchControls, new_OverridesBodyPitchControls,
-         old_OverridesBodyPitchControls);
-}
-
-void PseudoPCSetting::OnValueChanged(bool value) {
-    if(value) {
-        InControl::TouchStickControl::snapAngles[touchStick] = SnapAngles::Eight;
-    } else {
-        InControl::TouchStickControl::snapAngles[touchStick] = SnapAngles::None;
-    }
 }
 
 void (*old_FreeRoamCam_OnEnable)(void *);
@@ -172,4 +121,22 @@ void SharedSetting::OnUpdate() {
         DisplayFallTriggersSetting::instance->OnLevelChanged(oldLevelNumber);
         DisplayCheckpointsSetting::instance->OnLevelChanged(oldLevelNumber);
     }
+}
+
+void *(*old_UnloadUnusedAssets)();
+void *new_UnloadUnusedAssets() {
+    if(LagFixSetting::instance->GetValue()) return tmpObject;
+    return old_UnloadUnusedAssets();
+}
+
+bool (*old_get_isDone)(void *);
+bool new_get_isDone(void *instance) {
+    if(instance == tmpObject) return true;
+    return old_get_isDone(instance);
+}
+
+void LagFixSetting::OnLoaded() {
+    HOOK(Resources::UnloadUnusedAssets, new_UnloadUnusedAssets, old_UnloadUnusedAssets);
+    HOOK(AsyncOperation::get_isDone, new_get_isDone, old_get_isDone);
+    tmpObject = AsyncOperation::clazz.CreateNewInstance();
 }

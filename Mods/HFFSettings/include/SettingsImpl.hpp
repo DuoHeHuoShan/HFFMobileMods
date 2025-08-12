@@ -90,25 +90,6 @@ public:
     }
 };
 
-class VisibleBallSetting : public SettingCheckbox<VisibleBallSetting> {
-public:
-    BNM::UnityEngine::Object *ballObject;
-    VisibleBallSetting() : SettingCheckbox(SettingCategory::Extra, "visibleBall", false, "显示球") {}
-    void OnLoaded(bool value);
-    void OnValueChanged(bool value) {
-        if(!ballObject->Alive()) return;
-        UnityEngine::GameObject::SetActive[ballObject](value);
-    }
-};
-
-class PseudoPCSetting : public SettingCheckbox<PseudoPCSetting> {
-public:
-    BNM::UnityEngine::Object *touchStick;
-    PseudoPCSetting() : SettingCheckbox(SettingCategory::Extra, "pseudoPC", false, "伪端游") {}
-    void OnLoaded(bool value);
-    void OnValueChanged(bool value);
-};
-
 class DisplayLevelPassTriggersSetting : public SettingCheckbox<DisplayLevelPassTriggersSetting> {
 private:
     BNM::Class LevelPassTrigger;
@@ -239,6 +220,12 @@ public:
             ImGui::End();
         }
     }
+};
+
+class LagFixSetting : public SettingCheckbox<LagFixSetting> {
+public:
+    LagFixSetting() : SettingCheckbox(SettingCategory::Other, "lagFix", true, "卡顿修复") {}
+    void OnLoaded();
 };
 
 enum class UITheme {
