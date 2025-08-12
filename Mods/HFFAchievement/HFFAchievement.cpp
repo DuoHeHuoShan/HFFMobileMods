@@ -89,8 +89,8 @@ bool clearWhenTimerReset = false;
 
 std::vector<int> unlockedAchievements;
 std::vector<int> allAchievements;
-std::map<std::string, ImTextureID> achievementImageMap;
-std::map<std::string, std::string> locale;
+std::unordered_map<std::string, ImTextureID> achievementImageMap;
+std::unordered_map<std::string, std::string> locale;
 
 void ClearAchievements() {
     unlockedAchievements.clear();
@@ -186,7 +186,7 @@ void OnGUI() {
     }
     if(!achievementWindowOpened) return;
     ImGui::SetNextWindowSize(ImVec2(500, 300), ImGuiCond_Once);
-    if(ImGui::Begin("HFF手游成就插件v0.0.5", nullptr, ImGuiWindowFlags_NoResize)) {
+    if(ImGui::Begin("HFF手游成就插件v0.0.6", nullptr, ImGuiWindowFlags_NoResize)) {
         static int displayMode = 0; // 0 已解锁 1 未解锁 2 全部
         static int current_achievement = -1;
         static std::string currentAchievementName {};

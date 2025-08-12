@@ -10,10 +10,10 @@
 
 using namespace BNM::Structures;
 
-std::map<unsigned long long, std::string> levelNumber2Id;
+std::map<uint64_t, std::string> levelNumber2Id;
 int originMaxBuiltInLevels = 0;
 
-void AddWorkshopLevel(void *instance, unsigned long long levelID, void *workshopMetadata) {
+void AddWorkshopLevel(void *instance, uint64_t levelID, void *workshopMetadata) {
     void *metadata = BuiltinLevelMetadata::clazz.CreateNewObjectParameters();
     WorkshopItemMetadata::folder[metadata] = WorkshopItemMetadata::folder[workshopMetadata].Get();
     WorkshopItemMetadata::workshopId[metadata] = levelID;

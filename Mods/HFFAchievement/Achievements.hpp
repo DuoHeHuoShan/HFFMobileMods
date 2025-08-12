@@ -1,5 +1,5 @@
 #pragma once
-#include <map>
+#include <unordered_map>
 
 enum class Achievement
 {
@@ -144,7 +144,7 @@ enum class Achievement
     ACH_CANDYLAND_BALLS
 };
 
-std::map<Achievement, std::string> Achievement2Str
+std::unordered_map<Achievement, std::string> Achievement2Str
 {
         { Achievement::ACH_LVL_INTRO, "ACH_LVL_INTRO" },
         { Achievement::ACH_LVL_PUSH, "ACH_LVL_PUSH" },

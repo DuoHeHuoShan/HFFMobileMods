@@ -56,7 +56,6 @@ BNMU_EndDefineClass()
 BNMU_BeginDefineClass(App, "Multiplayer", App)
     BNMU_DefineField(BNM::Field<void *>, instance)
     BNMU_DefineMethod(BNM::Method<void>, PauseLeave, -1)
-    BNMU_DefineMethod(BNM::MethodBase, OnRequestLoadLevel, -1)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(PlayerManager, "", PlayerManager)
