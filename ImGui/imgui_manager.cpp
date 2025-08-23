@@ -21,6 +21,7 @@ static std::vector<std::function<void()>> onGuiFunctions;
 static std::vector<std::function<void()>> onLoadedFunctions;
 static int screenWidth, screenHeight;
 static int screenWidthReal, screenHeightReal;
+float touchRatioX, touchRatioY;
 static double g_Time = 0.0;
 static std::map<ImGuiStyleVar, float> styleVarsFloat;
 static std::map<ImGuiStyleVar, ImVec2> styleVarsVec2;
@@ -109,7 +110,7 @@ static void displayKeyboard(bool display) {
         if(display) {
             auto &inputTextState = ImGui::GetCurrentContext()->InputTextState;
             inputTextState.ClearSelection();
-            env->CallVoidMethod(currentUnityPlayer, UnityPlayer_showSoftInput, env->NewStringUTF(inputTextState.InitialTextA.Data), 0, false, false, false, false, env->NewStringUTF(""), 0, false, false);
+            env->CallVoidMethod(currentUnityPlayer, UnityPlayer_showSoftInput, env->NewStringUTF(inputTextState.TextToRevertTo.Data), 0, false, false, false, false, env->NewStringUTF(""), 0, false, false);
         } else {
             env->CallVoidMethod(currentUnityPlayer, UnityPlayer_hideSoftInput);
         }
@@ -218,7 +219,7 @@ void new_nativeSetInputString(JNIEnv *env, jobject instance, jstring str) {
         inputTextState.ClearSelection();
         inputTextState.TextA.resize(lastInputString.length() + 1);
         memcpy(inputTextState.TextA.Data, lastInputString.c_str(), lastInputString.length() + 1);
-        inputTextState.CurLenA = lastInputString.length();
+        inputTextState.TextLen = lastInputString.length();
         ((STB_TexteditState *)inputTextState.Stb)->cursor = lastInputString.length();
     }
     old_nativeSetInputString(env, instance, str);

@@ -2,12 +2,12 @@
 // This needs to be used along with the OpenGL 3 Renderer (imgui_impl_opengl3)
 
 // Implemented features:
-//  [X] Platform: Keyboard support. Since 1.87 we are using the io.AddKeyEvent() function. Pass ImGuiKey values to all key functions e.g. ImGui::IsKeyPressed(ImGuiKey_Space). [Legacy AKEYCODE_* values will also be supported unless IMGUI_DISABLE_OBSOLETE_KEYIO is set]
+//  [X] Platform: Keyboard support. Since 1.87 we are using the io.AddKeyEvent() function. Pass ImGuiKey values to all key functions e.g. ImGui::IsKeyPressed(ImGuiKey_Space). [Legacy AKEYCODE_* values are obsolete since 1.87 and not supported since 1.91.5]
 //  [X] Platform: Mouse support. Can discriminate Mouse/TouchScreen/Pen.
-// Missing features:
+// Missing features or Issues:
 //  [ ] Platform: Clipboard support.
-//  [ ] Platform: Gamepad support. Enable with 'io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad'.
-//  [ ] Platform: Mouse cursor shape and visibility. Disable with 'io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange'. FIXME: Check if this is even possible with Android.
+//  [ ] Platform: Gamepad support.
+//  [ ] Platform: Mouse cursor shape and visibility (ImGuiBackendFlags_HasMouseCursors). Disable with 'io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange'. FIXME: Check if this is even possible with Android.
 // Important:
 //  - Consider using SDL or GLFW backend on Android, which will be more full-featured than this.
 //  - FIXME: On-screen keyboard currently needs to be enabled by the application (see examples/ and issue #3446)
@@ -37,8 +37,6 @@
 #include <android/input.h>
 #include <android/keycodes.h>
 #include <android/log.h>
-
-float touchRatioX = 1, touchRatioY = 1;
 
 // Android data
 static double                                   g_Time = 0.0;
@@ -230,7 +228,7 @@ int32_t ImGui_ImplAndroid_HandleInputEvent(const AInputEvent* input_event)
             int tool_type = AMotionEvent_getToolType(input_event, event_pointer_index);
             if (tool_type == AMOTION_EVENT_TOOL_TYPE_FINGER || tool_type == AMOTION_EVENT_TOOL_TYPE_UNKNOWN)
             {
-                io.AddMousePosEvent(AMotionEvent_getX(input_event, event_pointer_index) * touchRatioX, AMotionEvent_getY(input_event, event_pointer_index) * touchRatioY);
+                io.AddMousePosEvent(AMotionEvent_getX(input_event, event_pointer_index), AMotionEvent_getY(input_event, event_pointer_index));
                 io.AddMouseButtonEvent(0, event_action == AMOTION_EVENT_ACTION_DOWN);
             }
             break;
@@ -246,7 +244,7 @@ int32_t ImGui_ImplAndroid_HandleInputEvent(const AInputEvent* input_event)
         }
         case AMOTION_EVENT_ACTION_HOVER_MOVE: // Hovering: Tool moves while NOT pressed (such as a physical mouse)
         case AMOTION_EVENT_ACTION_MOVE:       // Touch pointer moves while DOWN
-            io.AddMousePosEvent(AMotionEvent_getX(input_event, event_pointer_index) * touchRatioX, AMotionEvent_getY(input_event, event_pointer_index) * touchRatioY);
+            io.AddMousePosEvent(AMotionEvent_getX(input_event, event_pointer_index), AMotionEvent_getY(input_event, event_pointer_index));
             break;
         case AMOTION_EVENT_ACTION_SCROLL:
             io.AddMouseWheelEvent(AMotionEvent_getAxisValue(input_event, AMOTION_EVENT_AXIS_HSCROLL, event_pointer_index), AMotionEvent_getAxisValue(input_event, AMOTION_EVENT_AXIS_VSCROLL, event_pointer_index));
