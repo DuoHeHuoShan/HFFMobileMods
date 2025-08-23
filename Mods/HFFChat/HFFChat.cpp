@@ -143,6 +143,22 @@ struct HFFChat : public BNM::UnityEngine::MonoBehaviour {
     BNM_CustomMethod(CheckpointChange, true, BNM::Defaults::Get<void>(), "CheckpointChange", {BNM::Defaults::Get<Mono::String *>()});
 };
 
+void (*old_Update)(void *);
+void new_Update(void *instance) {
+    bool visible = NetChat::visible;
+    NetChat::visible = false;
+    old_Update(instance);
+    NetChat::visible = visible;
+    if(!NetGame::isNetStarted) {
+        if(NetChat::visible) NetChat::Show[instance](false, false);
+        return;
+    }
+    if(!NetChat::typing && visible && NetChat::dismissIn[instance] > 0.0f) {
+        NetChat::dismissIn[instance] = NetChat::dismissIn[instance] - Time::deltaTime;
+        if(NetChat::dismissIn[instance] <= 0.0f) NetChat::Show[instance](false, false);
+    }
+}
+
 void (*_HFFResources$Awake)(BNM::UnityEngine::Object *);
 void HFFResources$Awake(BNM::UnityEngine::Object *thiz) {
     using namespace UnityEngine;
@@ -152,6 +168,7 @@ void HFFResources$Awake(BNM::UnityEngine::Object *thiz) {
 
 void OnLoaded() {
     using namespace BNM;
+    InvokeHook(NetChat::Update, new_Update, old_Update);
     InvokeHook(HFFResources::Awake, HFFResources$Awake, _HFFResources$Awake);
     Shell::RegisterCommand = Shell::clazz.GetMethod("RegisterCommand", {BNM::Defaults::Get<Mono::String *>(), BNM::CompileTimeClassBuilder("System", "Action").Build(), BNM::Defaults::Get<Mono::String *>()});
     Shell::RegisterCommandStr = Shell::clazz.GetMethod("RegisterCommand", {BNM::Defaults::Get<Mono::String *>(), BNM::CompileTimeClassBuilder("System", "Action`1").Generic({BNM::Defaults::Get<Mono::String *>()}).Build(), BNM::Defaults::Get<Mono::String *>()});
