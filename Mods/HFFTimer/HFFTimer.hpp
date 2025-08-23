@@ -7,7 +7,12 @@
 
 enum class SpeedrunMode {
     Any,
-    Checkpoint
+    Checkpoint,
+    Randomize
+};
+enum class RandomizeCompletion {
+    Aztec,
+    Any
 };
 enum class TimerStyle {
     Solid,
@@ -40,8 +45,14 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
     bool displayAttempts = false;
     std::unordered_map<unsigned long long, int> attempts;
     std::string invalidText;
+    bool setSeed = false;
+    char randomSeed[100] = "";
+    RandomizeCompletion randomizeCompletion = RandomizeCompletion::Aztec;
+    int firstLevel = 0;
+    std::unordered_map<int, int> nextLevels;
 
     TimerStyle timerStyle = TimerStyle::Solid;
+    float timerSize = 20.0f;
     ImColor timerColor = ImColor(255, 0, 255);
     ImColor timerColorGradient1 = ImColor(255, 0, 255);
     ImColor timerColorGradient2 = ImColor(255, 0, 255);
@@ -65,10 +76,14 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
     bool ShouldToggleMenu();
     void Reset();
     void Update();
+    void FixedUpdate();
     void OnGUI();
 
     BNM_CustomMethod(Update, false, BNM::Defaults::Get<void>(), "Update");
     BNM_CustomMethodSkipTypeMatch(Update);
     BNM_CustomMethodMarkAsInvokeHook(Update);
+    BNM_CustomMethod(FixedUpdate, false, BNM::Defaults::Get<void>(), "FixedUpdate");
+    BNM_CustomMethodSkipTypeMatch(FixedUpdate);
+    BNM_CustomMethodMarkAsInvokeHook(FixedUpdate);
     BNM_CustomMethod(Constructor, false, BNM::Defaults::Get<void>(), ".ctor");
 };
