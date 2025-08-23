@@ -153,6 +153,7 @@ BNMU_EndDefineClass()
 BNMU_BeginDefineClass(UnityEngine::Object, "UnityEngine", Object)
     BNMU_DefineMethod(BNM::Method<BNM::Structures::Mono::Array<void *> *>, FindObjectsOfType, 2)
     BNMU_DefineMethod(BNM::Method<void>, Destroy, 1)
+    BNMU_DefineMethod(BNM::MethodBase, DestroyImmediate, 1)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(UnityEngine::Renderer, "UnityEngine", Renderer)

@@ -228,6 +228,12 @@ public:
     void OnLoaded();
 };
 
+class MPFixSetting : public SettingCheckbox<MPFixSetting> {
+public:
+    MPFixSetting() : SettingCheckbox(SettingCategory::Other, "mpFix", true, "联机修复 (需要重启)") {}
+    void OnLoaded(bool value);
+};
+
 enum class UITheme {
     Classic,
     Dark,

@@ -140,3 +140,8 @@ void LagFixSetting::OnLoaded() {
     HOOK(AsyncOperation::get_isDone, new_get_isDone, old_get_isDone);
     tmpObject = AsyncOperation::clazz.CreateNewInstance();
 }
+
+void MPFixSetting::OnLoaded(bool value) {
+    if(value) HOOK(UnityEngine::Object::DestroyImmediate, UnityEngine::Object::Destroy.GetInfo()->methodPointer,
+         nullptr);
+}
