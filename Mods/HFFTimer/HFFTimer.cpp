@@ -125,7 +125,7 @@ std::string HFFTimer::GetSpeedrunText() {
         if(glitchless) stringStream << " GL";
         stringStream << std::endl;
         if(mode == SpeedrunMode::Randomize && setSeed)
-            stringStream << "固定种子" << std::endl;
+            stringStream << "Set Seed" << std::endl;
         if(mode == SpeedrunMode::Checkpoint)
             stringStream << "CP: " << Game::currentCheckpointNumber[Game::instance].Get() << std::endl;
     }
