@@ -177,7 +177,7 @@ void HFFTimer::FixedUpdate() {
     BNM_CallCustomMethodOrigin(Update, this);
     static int oldCpNumber = 0;
     if(!Game::instance.Get()->Alive()) return;
-    if(autoReset && ((prevAppState == AppState::PlayLevel && App::state == AppState::Menu) || (prevAppState == AppState::ServerLoadLobby && App::state == AppState::ServerLobby) || (prevAppState == AppState::ClientLoadLobby && App::state == AppState::ClientLobby))) {
+    if(autoReset && ((prevGameState == GameState::Paused && App::state == AppState::Menu) || (prevAppState == AppState::ServerLoadLobby && App::state == AppState::ServerLobby) || (prevAppState == AppState::ClientLoadLobby && App::state == AppState::ClientLobby))) {
         restarting = true;
         Reset();
     }
