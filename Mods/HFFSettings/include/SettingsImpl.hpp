@@ -197,6 +197,7 @@ public:
     void OnClick();
 };
 
+
 class LocalSaveSetting : public SettingCheckbox<LocalSaveSetting> {
 private:
     static void ApplyLocalSave();
@@ -232,6 +233,12 @@ class MPFixSetting : public SettingCheckbox<MPFixSetting> {
 public:
     MPFixSetting() : SettingCheckbox(SettingCategory::Other, "mpFix", true, "联机修复 (需要重启)") {}
     void OnLoaded(bool value);
+};
+
+class SpeedrunValiditySetting : public SettingCheckbox<SpeedrunValiditySetting> {
+public:
+    SpeedrunValiditySetting() : SettingCheckbox(SettingCategory::Other, "speedrunValidity", false, "速通网有效性显示") {}
+    void OnGUIExtra();
 };
 
 enum class UITheme {

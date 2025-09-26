@@ -145,3 +145,19 @@ void MPFixSetting::OnLoaded(bool value) {
     if(value) HOOK(UnityEngine::Object::DestroyImmediate, UnityEngine::Object::Destroy.GetInfo()->methodPointer,
          nullptr);
 }
+
+void SpeedrunValiditySetting::OnGUIExtra() {
+    if(!SpeedrunValiditySetting::GetValue()) return;
+    if(!DisableShadowSetting::instance->GetValue() && CameraFOVSetting::instance->GetValue() == 5
+    && CameraSmoothingSetting::instance->GetValue() == 10 && !DisplayLevelPassTriggersSetting::instance->GetValue()
+    && !DisplayFallTriggersSetting::instance->GetValue() && !DisplayCheckpointsSetting::instance->GetValue()
+    && CloudSetting::instance->GetValue() == 2 && LookHScaleSetting::instance->GetValue() == 12
+    && LookVScaleSetting::instance->GetValue() == 5) {
+        ImGuiIO &io = ImGui::GetIO();
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs;
+        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x, io.DisplaySize.y), ImGuiCond_Always, ImVec2(1, 1));
+        ImGui::Begin("speedrunValid", nullptr, window_flags);
+        ImGui::Text("%s", "valid for speedrun.com");
+        ImGui::End();
+    }
+}

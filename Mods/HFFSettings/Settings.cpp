@@ -52,6 +52,7 @@ void SettingsManager::Init() {
     instance->AddSetting<FPSDisplaySetting>();
     instance->AddSetting<LagFixSetting>();
     instance->AddSetting<MPFixSetting>();
+    instance->AddSetting<SpeedrunValiditySetting>();
     instance->AddSetting<UIThemeSetting>();
     instance->AddSetting<UIWindowRoundingSetting>();
 
