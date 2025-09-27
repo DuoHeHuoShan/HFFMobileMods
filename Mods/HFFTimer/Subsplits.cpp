@@ -28,6 +28,7 @@ std::map<uint64_t, std::vector<Subsplit *>> subsplitConfig {
         {
             new GetUpSubsplit("起身"),
             new JumpAfterTriggerSubsplit("出青苔", {-8, 4, 5.5f}, {4, 1, 1}),
+            new LandAfterTriggerSubsplit("碰楼梯", {-4.5f, 4.8f, 16.5f}, {3, 1.6f, 1}),
             new FallSubsplit("刷新")
         }
     },
@@ -45,8 +46,8 @@ std::map<uint64_t, std::vector<Subsplit *>> subsplitConfig {
             new GetUpSubsplit("起身"),
             new GrabTriggerSubsplit("抓墙", {-4, 3.25f, -10}, {10, 1, 5}),
             new GrabSubsplit("抓火车", "Level/Plateau/Platform8x2x3/Cargo8x2x2"),
-            new JumpAfterTriggerSubsplit("跳岛", {6.5f, 20.5f, 13.3f}, {14, 3, 1}),
-            new JumpAfterTriggerSubsplit("碰楼梯", {36, 23, 57}, {3, 2, 1}),
+            new LandAfterTriggerSubsplit("跳岛", {6.5f, 20.5f, 13.3f}, {14, 3, 1}),
+            new LandAfterTriggerSubsplit("碰楼梯", {36, 23, 57}, {3, 2, 1}),
             new JumpAfterTriggerSubsplit("进门", {18, 31, 64}, {1, 2, 2}),
             new GrabSubsplit("抓遥控器", "Level/Tutorial/TutorialRemote"),
             new EnterTriggerSubsplit("起飞", {7.6f, 2.4f, -40.8f}, {1.4f, 0.4f, 1.6f}),
@@ -75,7 +76,8 @@ std::map<uint64_t, std::vector<Subsplit *>> subsplitConfig {
         {
             new GetUpSubsplit("起身"),
             new JumpAfterTriggerSubsplit("上山", {-11, 6.5f, 30}, {3, 1, 1}),
-            new GrabTriggerSubsplit("上水车", {-7.9f, 19.5f, 37.2f}, {1, 1, 5}),
+            new GrabTriggerSubsplit("抓水车", {-7.9f, 19.5f, 37.2f}, {1, 1, 5}),
+            new LandAfterTriggerSubsplit("上水车", {7.9, 19.5f, 37.2f}, {1, 1, 5}),
             new FallSubsplit("刷新")
         }
     },
@@ -83,6 +85,7 @@ std::map<uint64_t, std::vector<Subsplit *>> subsplitConfig {
         static_cast<uint64_t>(LevelNumbers::PowerPlant),
         {
             new GetUpSubsplit("起身"),
+            new JumpAfterTriggerSubsplit("起跳", {26, 0.5f, -41}, {8, 2, 1}),
             new GrabTriggerSubsplit("低飞", {21.4f, 23, 58.7f}, {13, 8, 13}),
         }
     },
@@ -90,6 +93,7 @@ std::map<uint64_t, std::vector<Subsplit *>> subsplitConfig {
         static_cast<uint64_t>(LevelNumbers::Aztec),
         {
             new GetUpSubsplit("起身"),
+            new LandAfterTriggerSubsplit("落四岛", {19, -1.1f, -32.3f}, {0.2f, 2.5f, 6}),
             new GrabTriggerSubsplit("抓墙", {7.5f, 0.6f, -16}, {7.1f, 2, 0.3f}),
             new GrabSubsplit("抬门", "Level/Lane4/02LiftDoorPuzzle/D_GapDoor")
         }

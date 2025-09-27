@@ -7,8 +7,15 @@ void new_Fall(void *instance, void *humanBase, bool drown, bool fallAchievement)
     old_Fall(instance, humanBase, drown, fallAchievement);
 }
 
+void (*old_Drown)(void *, void *);
+void new_Drown(void *instance, void *human) {
+    if(!Game::passedLevel[instance] && FallSubsplit::current) FallSubsplit::current->Trigger();
+    old_Drown(instance, human);
+}
+
 void SubsplitsManager::Init() {
     BNM::VirtualHook(Game::clazz, Game::Fall, new_Fall, old_Fall);
+    HOOK(Game::Drown, new_Drown, old_Drown);
 }
 
 void SubsplitsManager::Reset() {
