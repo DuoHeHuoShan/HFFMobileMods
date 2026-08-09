@@ -235,10 +235,10 @@ public:
     void OnLoaded(bool value);
 };
 
-class SpeedrunValiditySetting : public SettingCheckbox<SpeedrunValiditySetting> {
+class DisableMobileControlsSetting : public SettingCheckbox<DisableMobileControlsSetting> {
 public:
-    SpeedrunValiditySetting() : SettingCheckbox(SettingCategory::Other, "speedrunValidity", false, "速通网有效性显示") {}
-    void OnGUIExtra();
+    DisableMobileControlsSetting() : SettingCheckbox(SettingCategory::Other, "disableMobileControls", false, "禁用虚拟按键") {}
+    void OnLoaded();
 };
 
 enum class UITheme {

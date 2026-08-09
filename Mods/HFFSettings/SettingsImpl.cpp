@@ -141,23 +141,30 @@ void LagFixSetting::OnLoaded() {
     tmpObject = AsyncOperation::clazz.CreateNewInstance();
 }
 
-void MPFixSetting::OnLoaded(bool value) {
-    if(value) HOOK(UnityEngine::Object::DestroyImmediate, UnityEngine::Object::Destroy.GetInfo()->methodPointer,
-         nullptr);
+void (*DestroyOld)(void *);
+void DestroyNew(void *obj) {
+    UnityEngine::Object::Destroy(obj);
 }
 
-void SpeedrunValiditySetting::OnGUIExtra() {
-    if(!SpeedrunValiditySetting::GetValue()) return;
-    if(!DisableShadowSetting::instance->GetValue() && CameraFOVSetting::instance->GetValue() == 5
-    && CameraSmoothingSetting::instance->GetValue() == 10 && !DisplayLevelPassTriggersSetting::instance->GetValue()
-    && !DisplayFallTriggersSetting::instance->GetValue() && !DisplayCheckpointsSetting::instance->GetValue()
-    && CloudSetting::instance->GetValue() == 2 && LookHScaleSetting::instance->GetValue() == 12
-    && LookVScaleSetting::instance->GetValue() == 5) {
-        ImGuiIO &io = ImGui::GetIO();
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs;
-        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x, io.DisplaySize.y), ImGuiCond_Always, ImVec2(1, 1));
-        ImGui::Begin("speedrunValid", nullptr, window_flags);
-        ImGui::Text("%s", "valid for speedrun.com");
-        ImGui::End();
-    }
+void MPFixSetting::OnLoaded(bool value) {
+    if(value) HOOK(UnityEngine::Object::DestroyImmediate, DestroyNew,
+         DestroyOld);
+}
+
+void (*old_MobileScreen_Update)(void *);
+void MobileScreen_Update(void *instance) {
+    old_MobileScreen_Update(instance);
+    if (DisableMobileControlsSetting::instance->GetValue()) MobileScreen::EnableTouchControls[instance](false);
+}
+
+void (*old_MobileHUD_Update)(void *);
+void MobileHUD_Update(void *instance) {
+    using namespace UnityEngine;
+    old_MobileHUD_Update(instance);
+    if (DisableMobileControlsSetting::instance->GetValue()) GameObject::SetActive[Component::gameObject[MobileHUD::pauseButton[instance]]](false);
+}
+
+void DisableMobileControlsSetting::OnLoaded() {
+    HOOK(MobileScreen::Update, MobileScreen_Update, old_MobileScreen_Update);
+    HOOK(MobileHUD::Update, MobileHUD_Update, old_MobileHUD_Update);
 }

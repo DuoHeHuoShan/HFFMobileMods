@@ -13,6 +13,25 @@ using namespace BNM::Structures;
 std::map<uint64_t, std::string> levelNumber2Id;
 int originMaxBuiltInLevels = 0;
 
+uint32_t fnv1a_hash(const std::string& str) {
+    const uint32_t FNV_PRIME = 0x01000193u;
+    const uint32_t OFFSET_BASIS = 0x811C9DC5u;
+    uint32_t hash = OFFSET_BASIS;
+    for (char c : str) {
+        hash ^= static_cast<uint32_t>(c);
+        hash *= FNV_PRIME;
+    }
+    return hash;
+}
+
+uint32_t get_hash_above_1000(const std::string& input) {
+    uint32_t h = fnv1a_hash(input);
+    if (h <= 1000) {
+        h += 0x7FFFFFFFu;
+    }
+    return h;
+}
+
 void AddWorkshopLevel(void *instance, uint64_t levelID, void *workshopMetadata) {
     void *metadata = BuiltinLevelMetadata::clazz.CreateNewObjectParameters();
     WorkshopItemMetadata::folder[metadata] = WorkshopItemMetadata::folder[workshopMetadata].Get();
@@ -44,6 +63,14 @@ void new_LoadBuiltinLevels(void *instance, bool requestLobbies) {
 void (*old_BeginLoadLevel)(void *, Mono::String *, unsigned long long, int, int, void *);
 void new_BeginLoadLevel(void *instance, Mono::String *levelID, unsigned long long levelNumber, int a, int b, void *c) {
     if(levelNumber2Id.contains(levelNumber)) levelID = BNM::CreateMonoString(levelNumber2Id[levelNumber]);
+    else if (levelNumber > 1000) {
+        for (const auto& pair : levelNumber2Id) {
+            const std::string& value = pair.second;
+            if (get_hash_above_1000(value) == levelNumber) {
+                levelID = BNM::CreateMonoString(value);
+            }
+        }
+    }
     old_BeginLoadLevel(instance, levelID, levelNumber, a, b, c);
 }
 
@@ -79,6 +106,35 @@ void *new_LoadSceneAsync(Mono::String *sceneName, int mode) {
     return old_LoadSceneAsync(String::Replace[sceneName](BNM::CreateMonoString("_compressed"), BNM::CreateMonoString("")), mode);
 }
 
+// 联机部分
+
+bool needChangeLevelNumber = false;
+
+void *(*old_BeginMessage)(int msgId);
+void *BeginMessage(int msgId) {
+    if (needChangeLevelNumber && msgId == 9 && levelNumber2Id.contains(NetGame::currentLevel[NetGame::instance].Get())) { // LoadLevel
+        NetGame::currentLevel[NetGame::instance] = get_hash_above_1000(levelNumber2Id.at(NetGame::currentLevel[NetGame::instance]));
+        needChangeLevelNumber = false;
+    }
+    return old_BeginMessage(msgId);
+}
+
+void (*old_ServerLoadLevel)(void * instance, unsigned long long number, bool start, unsigned int levelHash);
+void ServerLoadLevel(void *instance, unsigned long long number, bool start, unsigned int levelHash) {
+    auto originLevel = NetGame::currentLevel[NetGame::instance].Get();
+    needChangeLevelNumber = true;
+    old_ServerLoadLevel(instance, number, start, levelHash);
+    NetGame::currentLevel[NetGame::instance] = number;
+}
+
+void (*old_OnClientHelo)(void *instance, void *client, void *msg);
+void OnClientHelo(void *instance, void *client, void *msg) {
+    auto originLevel = NetGame::currentLevel[NetGame::instance].Get();
+    needChangeLevelNumber = true;
+    old_OnClientHelo(instance, client, msg);
+    NetGame::currentLevel[NetGame::instance] = originLevel;
+}
+
 void OnLoaded() {
     using namespace BNM;
     WorkshopTypeRepository::classDefinition.clazz = WorkshopTypeRepository::clazz.GetGeneric({WorkshopLevelMetadata::clazz});
@@ -90,6 +146,9 @@ void OnLoaded() {
     VirtualHook(Game::clazz, Game::EnterCheckpoint, new_EnterCheckpoint, old_EnterCheckpoint);
 
     HOOK(SceneManager::LoadSceneAsync, new_LoadSceneAsync, old_LoadSceneAsync);
+    HOOK(NetGame::BeginMessage, BeginMessage, old_BeginMessage);
+    HOOK(NetGame::ServerLoadLevel, ServerLoadLevel, old_ServerLoadLevel);
+    HOOK(NetGame::OnClientHelo, OnClientHelo, old_OnClientHelo);
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {

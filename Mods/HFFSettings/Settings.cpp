@@ -52,7 +52,7 @@ void SettingsManager::Init() {
     instance->AddSetting<FPSDisplaySetting>();
     instance->AddSetting<LagFixSetting>();
     instance->AddSetting<MPFixSetting>();
-    instance->AddSetting<SpeedrunValiditySetting>();
+    instance->AddSetting<DisableMobileControlsSetting>();
     instance->AddSetting<UIThemeSetting>();
     instance->AddSetting<UIWindowRoundingSetting>();
 
@@ -97,7 +97,7 @@ void SettingsManager::OnGUI() {
     if(!settingsWindowOpened) return;
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_Once);
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2, io.DisplaySize.y / 2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
-    if(ImGui::Begin("HFF手游设置插件v0.0.6")) {
+    if(ImGui::Begin("HFF手游设置插件v0.0.7")) {
         if(ImGui::BeginTabBar("SettingsTabBar")) {
             for(auto &category : settings) {
                 if(ImGui::BeginTabItem(TranslateCategory(category.first).c_str())) {

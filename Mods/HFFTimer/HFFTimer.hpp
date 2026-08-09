@@ -41,7 +41,9 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
     ImVec2 restartButtonPos = {-1, -1};
     SpeedrunMode mode = SpeedrunMode::Any;
     bool glitchless = false;
-    bool displayWaterGlitch = false;
+    bool displayFootside = false;
+    bool enableNewCheckpoints = false;
+    bool displayBobCup = false;
     bool displayAttempts = false;
     std::unordered_map<unsigned long long, int> attempts;
     std::string invalidText;
@@ -86,4 +88,12 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
     BNM_CustomMethodSkipTypeMatch(FixedUpdate);
     BNM_CustomMethodMarkAsInvokeHook(FixedUpdate);
     BNM_CustomMethod(Constructor, false, BNM::Defaults::Get<void>(), ".ctor");
+};
+
+struct CheckpointClass : public BNM::UnityEngine::MonoBehaviour {
+    BNM_CustomClass(CheckpointClass, BNM::CompileTimeClassBuilder("HumanAPI", "Checkpoint").Build(), {}, {});
+
+    void Awake();
+
+    BNM_CustomMethod(Awake, false, {}, "Awake");
 };

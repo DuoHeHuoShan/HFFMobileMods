@@ -53,23 +53,27 @@ bool CheckObj(void *obj) {
 void (*old_LoadFromPreset)(void *, void *);
 void new_LoadFromPreset(void *instance, void *preset) {
     old_LoadFromPreset(instance, preset);
-    if(!CheckObj(preset) || RagdollPresetMetadata::folder[preset].Get() == nullptr || RagdollPresetMetadata::folder[preset].Get() >= (void *) 32000000000000000ull) return;
+    if(!CheckObj(preset) || RagdollPresetMetadata::folder[preset].Get() >= (void *) 32000000000000000ull) return;
     std::string partStr = WorkshopItemType2String(RagdollTexture::part[instance].Get());
-    RagdollTexture::savePath[instance] = FileTools::Combine(RagdollPresetMetadata::folder[preset].Get(), BNM::CreateMonoString(
+    if (RagdollPresetMetadata::folder[preset].Get() != nullptr) RagdollTexture::savePath[instance] = FileTools::Combine(RagdollPresetMetadata::folder[preset].Get(), BNM::CreateMonoString(
             partStr + ".png"));
     RagdollTexture::textureLoadSuppressed[instance] = RagdollPresetPartMetadata::suppressCustomTexture[RagdollPresetMetadata::GetPart[preset](RagdollTexture::part[instance].Get())].Get();
-    if(!RagdollTexture::textureLoadSuppressed[instance].Get() && FileTools::TestExists(RagdollTexture::savePath[instance].Get())) {
+    if(!RagdollTexture::textureLoadSuppressed[instance].Get()) {
         void *ragdollPresetPartMetadata = RagdollPresetMetadata::GetPart[preset](RagdollTexture::part[instance].Get());
         if(ragdollPresetPartMetadata != nullptr && RagdollPresetPartMetadata::bytes[ragdollPresetPartMetadata].Get() != nullptr) {
             RagdollTexture::ChangeBaseTexture[instance](FileTools::TextureFromBytes(BNM::CreateMonoString(partStr), RagdollPresetPartMetadata::bytes[ragdollPresetPartMetadata].Get()), false);
-        } else if(!RagdollTexture::savePath[instance].Get()->IsNullOrEmpty()) {
+            if(RagdollTexture::baseTexture[instance].Get()->Alive()) {
+                UnityEngine::Texture2D::Compress[RagdollTexture::baseTexture[instance].Get()](true);
+                UnityEngine::Texture2D::Apply[RagdollTexture::baseTexture[instance].Get()](true);
+            }
+        } else if(!RagdollTexture::savePath[instance].Get()->IsNullOrEmpty() && FileTools::TestExists(RagdollTexture::savePath[instance].Get())) {
             bool isAsset;
             void *newRes = FileTools::ReadTexture(RagdollTexture::savePath[instance].Get(), &isAsset);
             RagdollTexture::ChangeBaseTexture[instance](newRes, isAsset);
-        }
-        if(RagdollTexture::baseTexture[instance].Get()->Alive()) {
-            UnityEngine::Texture2D::Compress[RagdollTexture::baseTexture[instance].Get()](true);
-            UnityEngine::Texture2D::Apply[RagdollTexture::baseTexture[instance].Get()](true);
+            if(RagdollTexture::baseTexture[instance].Get()->Alive()) {
+                UnityEngine::Texture2D::Compress[RagdollTexture::baseTexture[instance].Get()](true);
+                UnityEngine::Texture2D::Apply[RagdollTexture::baseTexture[instance].Get()](true);
+            }
         }
     }
 }

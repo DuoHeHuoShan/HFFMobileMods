@@ -163,7 +163,6 @@ void HFFTimer::Update() {
         gameTime += Time::unscaledDeltaTime;
         ssTime = gameTime - prevGameTime;
     }
-    SubsplitsManager::Update();
     if(SharedData::GetData<bool>("HFFSettings::isCheated")) invalidText = "无效: 作弊";
     if(dirty) {
         WriteConfig();
@@ -223,6 +222,7 @@ void HFFTimer::FixedUpdate() {
         auto rightHand = HumanSegment::sensor[Ragdoll::partRightHand[Human::ragdoll[Human::Localplayer]]].Get();
         if(Human::onGround[Human::Localplayer] && !CollisionSensor::grabJoint[leftHand].Get()->Alive() && !CollisionSensor::grabJoint[rightHand].Get()->Alive() && (CollisionSensor::grabObject[leftHand].Get()->Alive() || CollisionSensor::grabObject[rightHand].Get()->Alive())) invalidText = "无效: 半身";
     }
+    SubsplitsManager::Update();
     prevGameState = Game::state[Game::instance];
     prevAppState = App::state;
 }
@@ -286,7 +286,7 @@ void HFFTimer::OnGUI() {
             int vtxEnd = drawList->VtxBuffer.size();
             ImGui::ShadeVertsLinearColorGradientKeepAlpha(ImGui::GetWindowDrawList(), vtxStart, vtxEnd, ImVec2(190 * timerRatio + 10, 0), ImVec2(380 * timerRatio + 10, timerHeight), timerColorGradient1, timerColorGradient2);
         }
-        if(displayWaterGlitch && !glitchless && Game::currentLevelNumber[Game::instance] == 6 && Game::passedLevel[Game::instance]) ImGui::TextColored(ImColor(0, 255, 0), "%s", "已踩点");
+        if(displayFootside && !glitchless && Game::currentLevelNumber[Game::instance] == 6 && Game::passedLevel[Game::instance]) ImGui::TextColored(ImColor(0, 255, 0), "%s", "已踩点");
         ImGui::TextColored(ImColor(255, 0, 0), "%s", invalidText.c_str());
         ImGui::End();
 
@@ -305,12 +305,43 @@ void HFFTimer::OnGUI() {
             }
             ImGui::End();
         }
+
         ImGui::PopFont();
+
+        if (displayBobCup) {
+            ImGui::PushFont(nullptr, 24.0f);
+            ImGui::SetNextWindowPos(
+                    ImVec2(io.DisplaySize.x - 120 * 1.5f, io.DisplaySize.y - 161.0f));
+            ImGui::SetNextWindowSize(ImVec2(120 * 1.5f, 161.0f));
+            ImGui::Begin("BobText", nullptr, timer_flags);
+
+            std::time_t now = std::time(nullptr);
+            std::tm tm = {};
+            localtime_r(&now, &tm);
+
+            auto bobColor = ImColor(255, 69, 0);
+            ImGui::TextColored(bobColor, "%s", "手游 Bob杯");
+            ImGui::TextColored(bobColor, "%d/%d/%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+            ImGui::TextColored(bobColor, "%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+            ImGui::TextColored(bobColor, "%s", "踩点显示:");
+            ImGui::SameLine();
+            ImGui::TextColored(displayFootside ? ImColor(0, 255, 0) : ImColor(255, 0, 0), "%s",
+                               displayFootside ? "开" : "关");
+
+            ImGui::TextColored(bobColor, "%s", "新存档点:");
+            ImGui::SameLine();
+            ImGui::TextColored(enableNewCheckpoints ? ImColor(0, 255, 0) : ImColor(255, 0, 0), "%s",
+                               enableNewCheckpoints ? "开" : "关");
+
+            ImGui::End();
+            ImGui::PopFont();
+        }
     }
     if(!timerWindowOpened) return;
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2, io.DisplaySize.y / 2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_Once);
-    if(ImGui::Begin("HFF手游计时器v0.0.6")) {
+    if(ImGui::Begin("HFF手游计时器v0.0.7")) {
         if(ImGui::BeginTabBar("TimerTabBar")) {
             if(ImGui::BeginTabItem("计时")) {
                 ImGui::Checkbox("启用计时器", &enableTimer);
@@ -339,7 +370,6 @@ void HFFTimer::OnGUI() {
                 ImGui::Checkbox("启用重开按钮", &enableRestartButton);
                 ImGui::Checkbox("移动重开按钮位置", &restartButtonDraggable);
                 ImGui::Checkbox("显示重开数", &displayAttempts);
-                ImGui::Checkbox("水踩点显示 (仅比赛使用)", &displayWaterGlitch);
                 ImGui::EndTabItem();
             }
             if(ImGui::BeginTabItem("定制")) {
@@ -375,6 +405,12 @@ void HFFTimer::OnGUI() {
                         dirty = true;
                     }
                 }
+                ImGui::EndTabItem();
+            }
+            if(ImGui::BeginTabItem("其它")) {
+                ImGui::Checkbox("赛事计时器", &displayBobCup);
+                ImGui::Checkbox("水踩点显示 (仅比赛使用)", &displayFootside);
+                ImGui::Checkbox("启用新版存档点 (仅比赛使用)", &enableNewCheckpoints);
                 ImGui::EndTabItem();
             }
             ImGui::EndTabBar();
@@ -418,6 +454,30 @@ int GetNextLevelRand(int currentLevel) {
         return HFFTimer::instance->nextLevels[currentLevel];
     }
     return currentLevel + 1;
+}
+
+void CheckpointClass::Awake() {
+    using namespace UnityEngine;
+    if (!HFFTimer::instance->enableNewCheckpoints) return;
+    if (Scene::GetNameInternal(SceneManager::GetActiveScene())->str().starts_with("River")) // 水
+    {
+        if (Checkpoint::number[(void *) this].Get() == 0) // 出生点 cp0
+        {
+            Transform::position[Component::transform[this]] = Vector3(-84.56f, 2.65f, 81.15f);
+        }
+        if (Checkpoint::number[(void *) this].Get() == 3) // 大船 cp3
+        {
+            Transform::position[Component::transform[this]] = Vector3(46.05f, 1.0f, -122.45f);
+            void *boxCollider = Component::GetComponent[this](BoxCollider::clazz.GetMonoType());
+            BoxCollider::center[boxCollider] = Vector3(9.49f, 0.0f, 5.52f);
+        }
+    }
+}
+
+bool (*old_Raycast)(void *ray, void *hitInfo, float maxDistance, int layerMask, UnityEngine::QueryTriggerInteraction queryTriggerInteraction);
+bool Raycast(void *ray, void *hitInfo, float maxDistance, int layerMask, UnityEngine::QueryTriggerInteraction queryTriggerInteraction) {
+    if (HFFTimer::instance && HFFTimer::instance->enableNewCheckpoints) return old_Raycast(ray, hitInfo, maxDistance, layerMask, UnityEngine::QueryTriggerInteraction::Collide);
+    return old_Raycast(ray, hitInfo, maxDistance, layerMask, queryTriggerInteraction);
 }
 
 void *(*old_PassLevel)(void *);
@@ -484,6 +544,7 @@ void OnLoaded() {
     HOOK((BNM::MethodBase) Game::RestartLevel, RestartLevel, old_RestartLevel);
     HOOK(Game::PassLevel, PassLevel, old_PassLevel);
     InvokeHook(HFFResources::Awake, HFFResources$Awake, _HFFResources$Awake);
+    if (Physics::Raycast.Initialized()) HOOK(Physics::Raycast, Raycast, old_Raycast);
 }
 
 std::string GetWorkDir() {

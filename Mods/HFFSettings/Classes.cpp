@@ -81,6 +81,7 @@ BNMU_BeginDefineClass(UnityEngine::GameObject, "UnityEngine", GameObject)
     BNMU_DefineMethod(BNM::Method<BNM::UnityEngine::Object *>, CreatePrimitive, -1)
     BNMU_DefineMethod(BNM::Method<void>, AddComponent, 1)
     BNMU_DefineMethod(BNM::Method<BNM::UnityEngine::Object *>, GetComponent, 1)
+    BNMU_DefineMethod(BNM::Method<void>, SetActive, 1)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(Mobile::SaveGameSystem::PlayerPrefs, "Mobile.SaveGameSystem", PlayerPrefs)
@@ -177,10 +178,24 @@ BNMU_BeginDefineClass(FreeRoamCam, "", FreeRoamCam)
     BNMU_DefineMethod(BNM::MethodBase, OnEnable, -1)
 BNMU_EndDefineClass()
 
+BNMU_BeginDefineClass(MobileScreen, "", MobileScreen)
+    BNMU_DefineMethod(BNM::MethodBase, Update, -1)
+    BNMU_DefineMethod(BNM::Method<void>, EnableTouchControls, -1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(MobileHUD, "", MobileHUD)
+    BNMU_DefineField(BNM::Field<void *>, pauseButton)
+    BNMU_DefineMethod(BNM::MethodBase, Update, -1)
+BNMU_EndDefineClass()
+
 BNMU_BeginDefineClass(AsyncOperation, "UnityEngine", AsyncOperation)
     BNMU_DefineMethod(BNM::MethodBase, get_isDone, -1)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(Resources, "UnityEngine", Resources)
     BNMU_DefineMethod(BNM::MethodBase, UnloadUnusedAssets, -1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(Debug, "UnityEngine", Debug)
+    BNMU_DefineMethod(BNM::Method<void>, Log, 1)
 BNMU_EndDefineClass()

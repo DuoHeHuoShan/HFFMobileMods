@@ -38,6 +38,12 @@ namespace UnityEngine {
         float altitudeAngle;
         float azimuthAngle;
     };
+    enum class QueryTriggerInteraction {
+        UseGlobal,
+        Ignore,
+        Collide
+    };
+    typedef int scene_t;
 }
 enum class GameState
 {
@@ -142,6 +148,10 @@ BNMU_BeginDefineClass(NetGame, "Multiplayer", NetGame)
     BNMU_DefineField(BNM::Field<bool>, isClient)
 BNMU_EndDefineClass()
 
+BNMU_BeginDefineClass(Checkpoint, "HumanAPI", Checkpoint)
+    BNMU_DefineField(BNM::Field<int>, number)
+BNMU_EndDefineClass()
+
 BNMU_BeginDefineClass(UnityEngine::Object, "UnityEngine", Object)
     BNMU_DefineMethod(BNM::MethodBase, FindObjectsOfType, 0)
 BNMU_EndDefineClass()
@@ -149,6 +159,7 @@ BNMU_EndDefineClass()
 BNMU_BeginDefineClass(UnityEngine::Component, "UnityEngine", Component)
     BNMU_DefineProperty(BNM::Property<BNM::UnityEngine::Object *>, gameObject)
     BNMU_DefineProperty(BNM::Property<BNM::UnityEngine::Object *>, transform)
+    BNMU_DefineMethod(BNM::Method<void *>, GetComponent, 1)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(UnityEngine::Transform, "UnityEngine", Transform)
@@ -158,6 +169,10 @@ BNMU_EndDefineClass()
 BNMU_BeginDefineClass(UnityEngine::GameObject, "UnityEngine", GameObject)
     BNMU_DefineMethod(BNM::Method<void>, AddComponent, 1)
     BNMU_DefineMethod(BNM::Method<BNM::UnityEngine::Object *>, Find, 1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(UnityEngine::BoxCollider, "UnityEngine", BoxCollider)
+    BNMU_DefineProperty(BNM::Property<BNM::Structures::Unity::Vector3>, center)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(UnityEngine::MonoBehaviour, "UnityEngine", MonoBehaviour)
@@ -179,4 +194,16 @@ BNMU_BeginDefineClass(UnityEngine::Time, "UnityEngine", Time)
     BNMU_DefineProperty(BNM::Property<float>, unscaledDeltaTime)
     BNMU_DefineProperty(BNM::Property<float>, deltaTime)
     BNMU_DefineProperty(BNM::Property<float>, fixedDeltaTime)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(UnityEngine::Physics, "UnityEngine", Physics)
+    BNMU_DefineMethod(BNM::MethodBase, Raycast, { "ray", "hitInfo", "maxDistance", "layerMask", "queryTriggerInteraction" })
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(UnityEngine::SceneManager, "UnityEngine.SceneManagement", SceneManager)
+    BNMU_DefineMethod(BNM::Method<scene_t>, GetActiveScene, -1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(UnityEngine::Scene, "UnityEngine.SceneManagement", Scene)
+    BNMU_DefineMethod(BNM::Method<Mono::String *>, GetNameInternal, -1)
 BNMU_EndDefineClass()

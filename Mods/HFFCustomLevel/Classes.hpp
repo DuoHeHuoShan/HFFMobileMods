@@ -63,7 +63,13 @@ BNMU_BeginDefineClass(PlayerManager, "", PlayerManager)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(NetGame, "Multiplayer", NetGame)
+    BNMU_DefineField(BNM::Field<void *>, instance)
     BNMU_DefineField(BNM::Field<bool>, isClient)
+    BNMU_DefineField(BNM::Field<unsigned long long>, currentLevel)
+//    BNMU_DefineField(BNM::Field<bool>, isServer)
+    BNMU_DefineMethod(BNM::MethodBase, BeginMessage, -1)
+    BNMU_DefineMethod(BNM::MethodBase, ServerLoadLevel, -1)
+    BNMU_DefineMethod(BNM::MethodBase, OnClientHelo, -1)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(WorkshopRepository, "", WorkshopRepository)
