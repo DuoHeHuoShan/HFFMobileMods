@@ -87,7 +87,7 @@ static void TrySetupImgui() {
     ImGui::CreateContext();
     std::string workDir = GetWorkDir();
     ImGuiIO &io = ImGui::GetIO();
-    io.IniFilename = (workDir + "/imgui.ini").c_str();
+    io.IniFilename = nullptr;
     if(std::filesystem::exists(workDir + "/GuiFont.ttf"))
         io.Fonts->AddFontFromFileTTF((workDir + "/GuiFont.ttf").c_str(), 20, nullptr, io.Fonts->GetGlyphRangesChineseFull());
     ImGui_ImplOpenGL3_Init();

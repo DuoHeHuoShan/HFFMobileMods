@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include "Classes.hpp"
 #include <unordered_map>
+#include <mutex>
 #include <BNM/ClassesManagement.hpp>
 
 enum class SpeedrunMode {
@@ -46,6 +47,7 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
     bool displayBobCup = false;
     bool displayAttempts = false;
     std::unordered_map<unsigned long long, int> attempts;
+    static std::mutex attemptsMutex;
     std::string invalidText;
     bool setSeed = false;
     char randomSeed[100] = "";
@@ -80,13 +82,11 @@ struct HFFTimer : public BNM::UnityEngine::MonoBehaviour {
     void Update();
     void FixedUpdate();
     void OnGUI();
+    int GetAttempts(unsigned long long level);
+    void IncrementAttempts(unsigned long long level);
 
     BNM_CustomMethod(Update, false, BNM::Defaults::Get<void>(), "Update");
-    BNM_CustomMethodSkipTypeMatch(Update);
-    BNM_CustomMethodMarkAsInvokeHook(Update);
     BNM_CustomMethod(FixedUpdate, false, BNM::Defaults::Get<void>(), "FixedUpdate");
-    BNM_CustomMethodSkipTypeMatch(FixedUpdate);
-    BNM_CustomMethodMarkAsInvokeHook(FixedUpdate);
     BNM_CustomMethod(Constructor, false, BNM::Defaults::Get<void>(), ".ctor");
 };
 

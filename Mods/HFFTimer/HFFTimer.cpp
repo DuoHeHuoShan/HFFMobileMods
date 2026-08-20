@@ -12,6 +12,7 @@
 #include <BNM/Coroutine.hpp>
 #include <sstream>
 #include <iomanip>
+#include <cstdio>
 #include <imgui_manager.hpp>
 #include <imgui.h>
 #include "SubsplitsManager.hpp"
@@ -84,52 +85,49 @@ std::string HFFTimer::FormatTime(float time) {
     int minutes = int(time) % 3600 / 60;
     int seconds = int(time) % 60;
     int ms = int(fmod(time, 1.0) * 100);
-    std::stringstream stringStream;
-    stringStream << std::setfill('0');
-    if(minutes == 0) stringStream << seconds << '.' << std::setw(2) << ms;
-    else if(hours == 0) stringStream << minutes << ':' << std::setw(2) << seconds << '.' << std::setw(2) << ms;
-    else stringStream << hours << ':' << std::setw(2) << minutes << ':' << std::setw(2) << seconds << '.' << std::setw(2) << ms;
-    return stringStream.str();
+    char buf[32];
+    if(minutes == 0) snprintf(buf, sizeof(buf), "%d.%02d", seconds, ms);
+    else if(hours == 0) snprintf(buf, sizeof(buf), "%d:%02d.%02d", minutes, seconds, ms);
+    else snprintf(buf, sizeof(buf), "%d:%02d:%02d.%02d", hours, minutes, seconds, ms);
+    return buf;
 }
 
 std::string HFFTimer::GetTimeText() {
-    std::stringstream stringStream;
+    std::string s;
+    s.reserve(96);
     if(timerLayout == TimerLayout::Common) {
-        stringStream << "总时间: " << FormatTime(gameTime) << std::endl;
-        stringStream << "单关: " << FormatTime(ssTime) << std::endl;
-        if(displayRealtime) stringStream << "上关实时时间: " << FormatTime(prevRealtime) << std::endl;
-        stringStream << "上关总时间: " << FormatTime(prevGameTime) << std::endl;
-        stringStream << "上次: " << FormatTime(prevLevelGameTime) << std::endl;
+        s += "总时间: "; s += FormatTime(gameTime); s += '\n';
+        s += "单关: "; s += FormatTime(ssTime); s += '\n';
+        if(displayRealtime) { s += "上关实时时间: "; s += FormatTime(prevRealtime); s += '\n'; }
+        s += "上关总时间: "; s += FormatTime(prevGameTime); s += '\n';
+        s += "上次: "; s += FormatTime(prevLevelGameTime); s += '\n';
     } else if(timerLayout == TimerLayout::Simple) {
-        stringStream << "GT: " << FormatTime(gameTime) << std::endl;
-        stringStream << "SS: " << FormatTime(ssTime) << std::endl;
-        if(displayRealtime) stringStream << "Prev RT: " << FormatTime(prevRealtime) << std::endl;
-        stringStream << "Prev GT: " << FormatTime(prevGameTime) << std::endl;
-        stringStream << "Prev: " << FormatTime(prevLevelGameTime) << std::endl;
+        s += "GT: "; s += FormatTime(gameTime); s += '\n';
+        s += "SS: "; s += FormatTime(ssTime); s += '\n';
+        if(displayRealtime) { s += "Prev RT: "; s += FormatTime(prevRealtime); s += '\n'; }
+        s += "Prev GT: "; s += FormatTime(prevGameTime); s += '\n';
+        s += "Prev: "; s += FormatTime(prevLevelGameTime); s += '\n';
     }
-    return stringStream.str();
+    return s;
 }
 
 std::string HFFTimer::GetSpeedrunText() {
-    std::stringstream stringStream;
+    std::string s;
+    s.reserve(64);
     if(timerLayout == TimerLayout::Common) {
-        stringStream << "项目: " << modesStr[int(mode)];
-        if(glitchless) stringStream << " GL";
-        stringStream << std::endl;
-        if(mode == SpeedrunMode::Randomize && setSeed)
-            stringStream << "固定种子" << std::endl;
-        if(mode == SpeedrunMode::Checkpoint)
-            stringStream << "存档: " << Game::currentCheckpointNumber[Game::instance].Get() << std::endl;
+        s += "项目: "; s += modesStr[int(mode)];
+        if(glitchless) s += " GL";
+        s += '\n';
+        if(mode == SpeedrunMode::Randomize && setSeed) s += "固定种子\n";
+        if(mode == SpeedrunMode::Checkpoint) { s += "存档: "; s += std::to_string(Game::currentCheckpointNumber[Game::instance].Get()); s += '\n'; }
     } else if(timerLayout == TimerLayout::Simple) {
-        stringStream << "Mode: " << modesStr[int(mode)];
-        if(glitchless) stringStream << " GL";
-        stringStream << std::endl;
-        if(mode == SpeedrunMode::Randomize && setSeed)
-            stringStream << "Set Seed" << std::endl;
-        if(mode == SpeedrunMode::Checkpoint)
-            stringStream << "CP: " << Game::currentCheckpointNumber[Game::instance].Get() << std::endl;
+        s += "Mode: "; s += modesStr[int(mode)];
+        if(glitchless) s += " GL";
+        s += '\n';
+        if(mode == SpeedrunMode::Randomize && setSeed) s += "Set Seed\n";
+        if(mode == SpeedrunMode::Checkpoint) { s += "CP: "; s += std::to_string(Game::currentCheckpointNumber[Game::instance].Get()); s += '\n'; }
     }
-    return stringStream.str();
+    return s;
 }
 
 bool HFFTimer::ShouldToggleMenu() {
@@ -155,7 +153,6 @@ void HFFTimer::Reset() {
 void HFFTimer::Update() {
     using namespace UnityEngine;
     using namespace Multiplayer;
-    BNM_CallCustomMethodOrigin(Update, this);
     if(ShouldToggleMenu()) timerWindowOpened = !timerWindowOpened;
     if(!Game::instance.Get()->Alive()) return;
     if(timeOnPause && Game::state[Game::instance] == GameState::Paused) {
@@ -173,7 +170,6 @@ void HFFTimer::Update() {
 void HFFTimer::FixedUpdate() {
     using namespace UnityEngine;
     using namespace Multiplayer;
-    BNM_CallCustomMethodOrigin(Update, this);
     static int oldCpNumber = 0;
     if(!Game::instance.Get()->Alive()) return;
     if(autoReset && ((prevGameState == GameState::Paused && App::state == AppState::Menu) || (prevAppState == AppState::ServerLoadLobby && App::state == AppState::ServerLobby) || (prevAppState == AppState::ClientLoadLobby && App::state == AppState::ClientLobby))) {
@@ -191,7 +187,7 @@ void HFFTimer::FixedUpdate() {
     }
     if((prevGameState == GameState::LoadingLevel || prevGameState == GameState::Inactive) && Game::state[Game::instance] == GameState::PlayingLevel) {
         if(restarting) {
-            ++attempts[Game::currentLevelNumber[Game::instance]];
+            IncrementAttempts(Game::currentLevelNumber[Game::instance]);
             startRealtime = Time::realtimeSinceStartup;
         }
         restarting = false;
@@ -339,9 +335,11 @@ void HFFTimer::OnGUI() {
         }
     }
     if(!timerWindowOpened) return;
+    static bool p_close = true;
+    if(!p_close) return;
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2, io.DisplaySize.y / 2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_Once);
-    if(ImGui::Begin("HFF手游计时器v0.0.7")) {
+    if(ImGui::Begin("HFF手游计时器v0.0.7", &p_close)) {
         if(ImGui::BeginTabBar("TimerTabBar")) {
             if(ImGui::BeginTabItem("计时")) {
                 ImGui::Checkbox("启用计时器", &enableTimer);
@@ -420,6 +418,18 @@ void HFFTimer::OnGUI() {
 }
 
 HFFTimer *HFFTimer::instance;
+std::mutex HFFTimer::attemptsMutex;
+
+int HFFTimer::GetAttempts(unsigned long long level) {
+    std::lock_guard<std::mutex> lock(attemptsMutex);
+    auto it = attempts.find(level);
+    return it != attempts.end() ? it->second : 0;
+}
+
+void HFFTimer::IncrementAttempts(unsigned long long level) {
+    std::lock_guard<std::mutex> lock(attemptsMutex);
+    ++attempts[level];
+}
 
 void GenerateRandomLevels() {
     HFFTimer::instance->nextLevels.clear();
@@ -510,7 +520,7 @@ BNM::Coroutine::IEnumerator Restart(int level) {
         if(Game::currentLevelNumber[Game::instance] == level) {
             HFFTimer::instance->restarting = false;
             HFFTimer::instance->startRealtime = UnityEngine::Time::realtimeSinceStartup;
-            ++HFFTimer::instance->attempts[level];
+            HFFTimer::instance->IncrementAttempts(level);
         }
         App::NextLevelServer[App::instance](level, 0);
         HFFTimer::instance->Reset();

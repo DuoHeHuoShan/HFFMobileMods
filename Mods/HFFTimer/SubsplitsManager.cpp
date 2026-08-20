@@ -50,7 +50,7 @@ void FallSubsplit::OnStart() {
 std::string SubsplitsManager::GetSubsplitsText() {
     if(!Game::instance.Get()->Alive() || (Game::state[Game::instance] != GameState::PlayingLevel && Game::state[Game::instance] != GameState::Paused)) return "";
     std::stringstream ss;
-    if(HFFTimer::instance->displayAttempts) ss << "重开: " << HFFTimer::instance->attempts[Game::currentLevelNumber[Game::instance]] << "次" << std::endl;
+    if(HFFTimer::instance->displayAttempts) ss << "重开: " << HFFTimer::instance->GetAttempts(Game::currentLevelNumber[Game::instance]) << "次" << std::endl;
     for(auto subsplit : subsplitConfig.contains(currentLevel) ? subsplitConfig[currentLevel] : subsplitConfig[static_cast<uint64_t>(LevelNumbers::Default)]) {
         if(subsplit->GetTriggered() && !subsplit->GetLabel().empty()) {
             ss << subsplit->GetLabel() << ": " << HFFTimer::FormatTime(subsplit->GetTriggeredTime()) << std::endl;

@@ -24,19 +24,13 @@ struct HFFSettings : public BNM::UnityEngine::MonoBehaviour {
             BNM::CompileTimeClassBuilder("UnityEngine", "MonoBehaviour", "UnityEngine.CoreModule").Build(),
     {});
     void Awake() {
-        BNM_CallCustomMethodOrigin(Awake, this);
         SettingsManager::instance->OnAwake();
     }
     void Update() {
-        BNM_CallCustomMethodOrigin(Update, this);
         SettingsManager::instance->OnUpdate();
     }
     BNM_CustomMethod(Awake, false, BNM::Defaults::Get<void>(), "Awake");
-    BNM_CustomMethodSkipTypeMatch(Awake);
-    BNM_CustomMethodMarkAsInvokeHook(Awake);
     BNM_CustomMethod(Update, false, BNM::Defaults::Get<void>(), "Update");
-    BNM_CustomMethodSkipTypeMatch(Update);
-    BNM_CustomMethodMarkAsInvokeHook(Update);
 };
 
 void (*_HFFResources$Awake)(BNM::UnityEngine::Object *);

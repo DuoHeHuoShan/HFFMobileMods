@@ -185,8 +185,10 @@ void OnGUI() {
         ImGui::End();
     }
     if(!achievementWindowOpened) return;
+    static bool p_close = true;
+    if(!p_close) return;
     ImGui::SetNextWindowSize(ImVec2(500, 300), ImGuiCond_Once);
-    if(ImGui::Begin("HFF手游成就插件 v0.0.7", nullptr, ImGuiWindowFlags_NoResize)) {
+    if(ImGui::Begin("HFF手游成就插件 v0.0.7", &p_close, ImGuiWindowFlags_NoResize)) {
         static int displayMode = 0; // 0 已解锁 1 未解锁 2 全部
         static int current_achievement = -1;
         static std::string currentAchievementName {};
@@ -273,8 +275,6 @@ struct HFFAchievement : public BNM::UnityEngine::MonoBehaviour {
     }
 
     BNM_CustomMethod(Update, false, BNM::Defaults::Get<void>(), "Update");
-    BNM_CustomMethodSkipTypeMatch(Update);
-    BNM_CustomMethodMarkAsInvokeHook(Update);
     BNM_CustomMethod(Constructor, false, BNM::Defaults::Get<void>(), ".ctor");
 };
 

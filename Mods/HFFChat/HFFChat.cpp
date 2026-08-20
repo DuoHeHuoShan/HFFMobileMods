@@ -28,24 +28,29 @@ void SendChatText(const std::string &text) {
     }
 }
 
-std::string GetChatText() {
-    std::string result;
-    if(chatBoxMode == ChatBoxMode::Chat) {
-        result = NetChat::contents.Get()->str();
-    } else if(chatBoxMode == ChatBoxMode::Console) {
-        result = Shell::contents.Get()->str();
-    }
-    result = std::regex_replace(result, std::regex("<#......>|<color=#......>|</color>"), "");
-    return result;
+static const std::regex chatColorRegex("<#......>|<color=#......>|</color>");
+static std::string chatCacheRaw;
+static std::string chatCacheClean;
+
+static void UpdateChatCache() {
+    std::string raw = chatBoxMode == ChatBoxMode::Chat
+        ? NetChat::contents.Get()->str()
+        : Shell::contents.Get()->str();
+    if(raw == chatCacheRaw) return;
+    chatCacheRaw = std::move(raw);
+    chatCacheClean = std::regex_replace(chatCacheRaw, chatColorRegex, "");
 }
 
 void OnGUI() {
     if(!chatMenuOpened) return;
+    static bool p_close = true;
+    if(!p_close) return;
     ImGui::SetNextWindowSize(ImVec2(450, 300), ImGuiCond_Once);
-    if(ImGui::Begin("HFF手游聊天框插件v0.0.7", nullptr, ImGuiWindowFlags_NoResize)) {
+    if(ImGui::Begin("HFF手游聊天框插件v0.0.7", &p_close, ImGuiWindowFlags_NoResize)) {
+        UpdateChatCache();
         ImGui::BeginChild("chatContentFrame", ImVec2(430, 210), 0,
                           ImGuiWindowFlags_HorizontalScrollbar);
-        ImGui::Text("%s", GetChatText().c_str());
+        ImGui::Text("%s", chatCacheClean.c_str());
         ImGui::EndChild();
         if (ImGui::Button(chatBoxMode == ChatBoxMode::Chat ? "聊天" : "终端")) {
             if (chatBoxMode == ChatBoxMode::Chat) chatBoxMode = ChatBoxMode::Console;
@@ -136,8 +141,6 @@ struct HFFChat : public BNM::UnityEngine::MonoBehaviour {
     }
 
     BNM_CustomMethod(Update, false, BNM::Defaults::Get<void>(), "Update");
-    BNM_CustomMethodSkipTypeMatch(Update);
-    BNM_CustomMethodMarkAsInvokeHook(Update);
     BNM_CustomMethod(Constructor, false, BNM::Defaults::Get<void>(), ".ctor");
     BNM_CustomMethod(LevelChange, true, BNM::Defaults::Get<void>(), "LevelChange", {BNM::Defaults::Get<Mono::String *>()});
     BNM_CustomMethod(CheckpointChange, true, BNM::Defaults::Get<void>(), "CheckpointChange", {BNM::Defaults::Get<Mono::String *>()});

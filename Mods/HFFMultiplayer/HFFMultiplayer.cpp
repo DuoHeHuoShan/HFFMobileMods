@@ -54,8 +54,9 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
 
     std::fstream userNameFile;
     userNameFile.open(GetWorkDir() + "/MultiplayerName.txt", std::ios_base::in);
-    if(userNameFile.bad()) return JNI_VERSION_1_6;
+    if(!userNameFile.is_open()) return JNI_VERSION_1_6;
     std::getline(userNameFile, userName);
+    if (userName.empty()) return JNI_VERSION_1_6;
     userNameFile.close();
     userId = "user" + std::to_string(time(nullptr));
 
