@@ -8,10 +8,15 @@
 BNM::Class StartupExperienceController;
 BNM::MethodBase StartupExperienceController_PlayStartupExperience;
 BNM::Method<void> StartupExperienceController_SkipStartupExperience;
+BNM::MethodBase Game_CheckIfAppInstalled;
 
 void (*old_StartupExperienceController_PlayStartupExperience)(BNM::UnityEngine::Object *);
 void new_StartupExperienceController_PlayStartupExperience(BNM::UnityEngine::Object *instance) {
     StartupExperienceController_SkipStartupExperience[instance](nullptr);
+}
+
+bool new_CheckIfAppInstalled(void *) {
+    return true;
 }
 
 void OnLoaded() {
@@ -19,7 +24,9 @@ void OnLoaded() {
     StartupExperienceController = Class("", "StartupExperienceController");
     StartupExperienceController_PlayStartupExperience = StartupExperienceController.GetMethod("PlayStartupExperience");
     StartupExperienceController_SkipStartupExperience = StartupExperienceController.GetMethod("SkipStartupExperience");
+    Game_CheckIfAppInstalled = Class("", "Game").GetMethod("CheckIfAppInstalled");
     HOOK(StartupExperienceController_PlayStartupExperience, new_StartupExperienceController_PlayStartupExperience, old_StartupExperienceController_PlayStartupExperience);
+    HOOK(Game_CheckIfAppInstalled, &new_CheckIfAppInstalled, nullptr);
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, [[maybe_unused]] void *reserved) {
