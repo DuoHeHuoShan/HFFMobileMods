@@ -86,7 +86,7 @@ std::string HFFTimer::FormatTime(float time) {
     int seconds = int(time) % 60;
     int ms = int(fmod(time, 1.0) * 100);
     char buf[32];
-    if(minutes == 0) snprintf(buf, sizeof(buf), "%d.%02d", seconds, ms);
+    if(hours == 0 && minutes == 0) snprintf(buf, sizeof(buf), "%d.%02d", seconds, ms);
     else if(hours == 0) snprintf(buf, sizeof(buf), "%d:%02d.%02d", minutes, seconds, ms);
     else snprintf(buf, sizeof(buf), "%d:%02d:%02d.%02d", hours, minutes, seconds, ms);
     return buf;
