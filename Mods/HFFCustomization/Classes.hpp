@@ -58,8 +58,11 @@ BNMU_BeginDefineClass(RagdollPresetPartMetadata, "HumanAPI", RagdollPresetPartMe
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(RagdollPresetMetadata, "HumanAPI", RagdollPresetMetadata)
-    BNMU_DefineField(BNM::Field<Mono::String *>, folder)
     BNMU_DefineMethod(BNM::Method<void *>, GetPart, -1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(WorkshopItemMetadata, "HumanAPI", WorkshopItemMetadata)
+    BNMU_DefineField(BNM::Field<Mono::String *>, folder)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(RagdollTexture, "", RagdollTexture)
@@ -67,7 +70,11 @@ BNMU_BeginDefineClass(RagdollTexture, "", RagdollTexture)
     BNMU_DefineField(BNM::Field<bool>, textureLoadSuppressed)
     BNMU_DefineField(BNM::Field<WorkshopItemType>, part)
     BNMU_DefineField(BNM::Field<BNM::UnityEngine::Object *>, baseTexture)
+    BNMU_DefineField(BNM::Field<BNM::UnityEngine::Object *>, bakedTexture)
+    BNMU_DefineField(BNM::Field<BNM::UnityEngine::Object *>, renderTexture)
+    BNMU_DefineMethod(BNM::MethodBase, ApplyPresetColors, -1)
     BNMU_DefineMethod(BNM::MethodBase, LoadFromPreset, -1)
+    BNMU_DefineMethod(BNM::MethodBase, ReleaseBaseTexture, -1)
     BNMU_DefineMethod(BNM::Method<void>, ChangeBaseTexture, -1)
 BNMU_EndDefineClass()
 
@@ -77,6 +84,10 @@ BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(UnityEngine::GameObject, "UnityEngine", GameObject)
     BNMU_DefineMethod(BNM::Method<bool>, SetActive, -1)
+BNMU_EndDefineClass()
+
+BNMU_BeginDefineClass(UnityEngine::Object, "UnityEngine", Object)
+    BNMU_DefineMethod(BNM::Method<bool>, Destroy, 1)
 BNMU_EndDefineClass()
 
 BNMU_BeginDefineClass(UnityEngine::Texture2D, "UnityEngine", Texture2D)
